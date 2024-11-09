@@ -34,7 +34,7 @@ public class BufferHelper {
     /**
      * Draws a given collection of buffers to the screen as a group.
      */
-    public void draw(Collection<ElementBuffer> buffers) {
+    public static void draw(Collection<ElementBuffer> buffers) {
         // Set the texture and draw the buffer using the render texture
         // We can safely disable and re-enable the depth test because we know
         // the depth test is on through all UI rendering. We want to nicely

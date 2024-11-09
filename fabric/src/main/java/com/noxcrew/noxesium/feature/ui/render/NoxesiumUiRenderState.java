@@ -8,11 +8,14 @@ import net.minecraft.client.gui.LayeredDraw;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Stores the entire render state of the current UI.
  */
 public class NoxesiumUiRenderState implements Closeable {
+
+    private ElementBuffer buffer;
 
     /**
      * Ticks this render state, triggering requests to the GPU to read back
@@ -26,11 +29,27 @@ public class NoxesiumUiRenderState implements Closeable {
      * Renders the given layered draw object to the screen.
      */
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
-        guiGraphics.pose().pushPose();
-        for (var layer : layeredDraw.layers()) {
-            renderLayer(guiGraphics, deltaTracker, layer);
+        // Set up the buffer
+        if (buffer == null) {
+            buffer = new ElementBuffer();
         }
-        guiGraphics.pose().popPose();
+
+        try {
+            // Prepare the buffer to be drawn to
+            buffer.bind(guiGraphics);
+
+            // Draw the gui graphics onto the buffer
+            guiGraphics.pose().pushPose();
+            for (var layer : layeredDraw.layers()) {
+                renderLayer(guiGraphics, deltaTracker, layer);
+            }
+            guiGraphics.pose().popPose();
+        } finally {
+            BufferHelper.unbind(guiGraphics);
+        }
+
+        // Finally we can draw the buffer to the actual screen
+        BufferHelper.draw(List.of(buffer));
     }
 
     /**
@@ -54,6 +73,9 @@ public class NoxesiumUiRenderState implements Closeable {
 
     @Override
     public void close() throws IOException {
-
+        if (buffer != null) {
+            buffer.close();
+        }
+        buffer = null;
     }
 }

@@ -13,8 +13,8 @@
   "noxesium.options.game_time_overlay.tooltip": "Adds a small overlay that shows the current game time.\n\n§cIntended for shader development.",
   "debug.game_time_overlay": "%s st, %s gt",
 
-  "debug.noxesium_overlay.on": "Noxesium: §aOn",
-  "debug.noxesium_overlay.off": "Noxesium: §cOff",
+  "debug.experimental_patches.on": "Experimental Optimizations: §aOn",
+  "debug.experimental_patches.off": "Experimental Optimizations: §cOff",
 
   "noxesium.options.pages.noxesium": "Noxesium",
   "noxesium.options.screen.noxesium": "Noxesium Settings",

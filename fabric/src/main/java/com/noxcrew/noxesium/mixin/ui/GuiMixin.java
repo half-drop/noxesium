@@ -63,10 +63,9 @@ public abstract class GuiMixin {
         var text = new ArrayList<Component>();
         if (NoxesiumMod.getInstance().getConfig().showFpsOverlay) {
             text.add(Component.translatable("debug.fps_overlay", minecraft.getFps()));
-
-            if (NoxesiumConfig.experimentalPatchesHotkey != null) {
-                text.add(Component.translatable("debug.noxesium_overlay." + (NoxesiumConfig.experimentalPatchesHotkey ? "on" : "off")));
-            }
+        }
+        if (NoxesiumConfig.experimentalPatchesHotkey != null) {
+            text.add(Component.translatable("debug.experimental_patches." + (NoxesiumConfig.experimentalPatchesHotkey ? "on" : "off")));
         }
         if (NoxesiumMod.getInstance().getConfig().showGameTimeOverlay) {
             text.add(Component.translatable("debug.game_time_overlay", String.format("%.5f", RenderSystem.getShaderGameTime()), (int) (RenderSystem.getShaderGameTime() * 24000)));
@@ -110,7 +109,8 @@ public abstract class GuiMixin {
         noxesium$addRenderLayer("Noxesium - Text Overlay", this::noxesium$renderTextOverlay, () -> !this.getDebugOverlay().showDebugScreen() &&
             (NoxesiumMod.getInstance().getConfig().showFpsOverlay ||
                 NoxesiumMod.getInstance().getConfig().showGameTimeOverlay ||
-                NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging)
+                NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging ||
+                NoxesiumConfig.experimentalPatchesHotkey != null)
         );
     }
 }
