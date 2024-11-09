@@ -107,7 +107,7 @@ public abstract class GuiMixin {
         noxesium$addRenderLayer("Noxesium - CustomMapUiWidget", new CustomMapUiWidget(), () -> NoxesiumMod.getInstance().getConfig().shouldRenderMapsInUi() &&
             !ServerRules.DISABLE_MAP_UI.getValue());
 
-        noxesium$addRenderLayer("Noxesium - Text Overlay", this::noxesium$renderTextOverlay, () -> this.getDebugOverlay().showDebugScreen() &&
+        noxesium$addRenderLayer("Noxesium - Text Overlay", this::noxesium$renderTextOverlay, () -> !this.getDebugOverlay().showDebugScreen() &&
             (NoxesiumMod.getInstance().getConfig().showFpsOverlay ||
                 NoxesiumMod.getInstance().getConfig().showGameTimeOverlay ||
                 NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging)

@@ -1,33 +1,26 @@
-package com.noxcrew.noxesium.feature.ui.wrapper;
+
+package com.noxcrew.noxesium.feature.ui.render;
 
 import com.mojang.blaze3d.buffers.BufferUsage;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.renderer.CoreShaders;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static net.minecraft.client.Minecraft.ON_OSX;
-
 /**
- * Holds all information about a buffered piece of UI.
+ * A wrapper around a VertexBuffer used for capturing rendered UI elements
+ * and re-using them.
  * <p>
- * Heavily inspired by <a href="https://github.com/tr7zw/Exordium">Exordium</a>!
- * <p>
- * The big difference in this implementation though is more detail in how
- * we determine when to redraw. Instead of being based on a fixed framerate
- * per element we instead tackle the problem directly and cache everything that
- * we know cannot change unless we cleared the cache.
+ * Inspired by <a href="https://github.com/tr7zw/Exordium">Exordium</a>!
  */
 public class ElementBuffer implements Closeable {
 
@@ -39,18 +32,33 @@ public class ElementBuffer implements Closeable {
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
     /**
-     * Indicates that the buffer is valid.
+     * Binds this buffer to the render target, replacing any previous target.
      */
-    public boolean isValid() {
-        return buffer != null;
+    public boolean bind(GuiGraphics guiGraphics) {
+        RenderSystem.assertOnRenderThread();
+
+        // Flush the gui graphics to finish drawing to whatever it was on
+        guiGraphics.flush();
+
+        // Before binding we want to resize this buffer if necessary
+        resize();
+
+        // If the buffer has been properly created we can bind it
+        // and clear it.
+        if (isValid()) {
+            target.setClearColor(0, 0, 0, 0);
+            target.clear();
+            target.bindWrite(false);
+            return true;
+        }
+        return false;
     }
 
     /**
-     * Resizes this buffer to the given width and height.
+     * Resizes this buffer to fit the game window.
      */
-    public boolean resize(Window window) {
-        RenderSystem.assertOnRenderThread();
-
+    private void resize() {
+        var window = Minecraft.getInstance().getWindow();
         var width = window.getWidth();
         var height = window.getHeight();
 
@@ -94,49 +102,23 @@ public class ElementBuffer implements Closeable {
                     configuring.set(false);
                 }
             }
-            return true;
         }
-        return false;
     }
 
     /**
-     * Returns the render target of this buffer.
+     * Draws this buffer directly and immediately.
      */
-    public RenderTarget getTarget() {
-        return target;
+    protected void draw() {
+        RenderSystem.setShaderTexture(0, target.getColorTextureId());
+        buffer.bind();
+        buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
     }
 
     /**
-     * Returns the texture id of this buffer.
+     * Returns whether the buffer is valid and has been prepared.
      */
-    public int getTextureId() {
-        return target.getColorTextureId();
-    }
-
-    /**
-     * Draws this buffer to the screen.
-     */
-    public void draw() {
-        // Set the texture and draw the buffer using the render texture
-        // We can safely disable and re-enable the depth test because we know
-        // the depth test is on through all UI rendering. We want to nicely
-        // set the blending state back to what it was though to avoid causing
-        // issues with other components.
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        ElementWrapper.withBlend(() -> {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        }, () -> {
-            RenderSystem.setShader(CoreShaders.POSITION_TEX);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            RenderSystem.setShaderTexture(0, getTextureId());
-            buffer.bind();
-            buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
-        });
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+    public boolean isValid() {
+        return buffer != null;
     }
 
     @Override
@@ -150,4 +132,5 @@ public class ElementBuffer implements Closeable {
             target = null;
         }
     }
+
 }

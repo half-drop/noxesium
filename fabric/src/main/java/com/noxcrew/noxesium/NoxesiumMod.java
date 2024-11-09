@@ -16,7 +16,6 @@ import com.noxcrew.noxesium.feature.rule.ServerRuleModule;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.skull.SkullFontModule;
 import com.noxcrew.noxesium.feature.sounds.NoxesiumSoundModule;
-import com.noxcrew.noxesium.feature.ui.NoxesiumReloadListener;
 import com.noxcrew.noxesium.network.NoxesiumPacketHandling;
 import com.noxcrew.noxesium.network.NoxesiumPackets;
 import com.noxcrew.noxesium.network.serverbound.ServerboundClientInformationPacket;
@@ -196,9 +195,6 @@ public class NoxesiumMod implements ClientModInitializer {
 
         // Register all universal messaging channels
         NoxesiumPackets.registerPackets("universal");
-
-        // Register the resource listener
-        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new NoxesiumReloadListener());
 
         // Trigger registration of all server and entity rules
         Object ignored = ServerRules.DISABLE_SPIN_ATTACK_COLLISIONS;

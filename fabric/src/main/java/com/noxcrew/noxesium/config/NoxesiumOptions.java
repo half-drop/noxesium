@@ -11,7 +11,7 @@ public class NoxesiumOptions {
 
     private static final OptionInstance<Boolean> experimentalPatches = OptionInstance.createBoolean(
             "noxesium.options.experimental_patches.name",
-            OptionInstance.cachedConstantTooltip(Component.translatable("noxesium.options.experimental_patches.tooltip")),
+            OptionInstance.cachedConstantTooltip(Component.translatable("noxesium.options.experimental_patches.tooltip.v2")),
             NoxesiumMod.getInstance().getConfig().hasConfiguredPerformancePatches(),
             (newValue) -> {
                 NoxesiumMod.getInstance().getConfig().enableExperimentalPerformancePatches = newValue;

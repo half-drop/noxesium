@@ -36,18 +36,12 @@ public class NoxesiumConfig {
     public double mapUiSize = 0.8;
     public MapLocation mapUiLocation = MapLocation.TOP;
 
-    /**
-     * Returns whether experimental patches are available.
-     */
-    public boolean areExperimentalPatchesAvailable() {
-        return false;
-    }
 
     /**
      * Returns whether experimental performance are enabled in the configuration.
      */
     public boolean hasConfiguredPerformancePatches() {
-        return areExperimentalPatchesAvailable() && enableExperimentalPerformancePatches;
+        return enableExperimentalPerformancePatches;
     }
 
     /**
