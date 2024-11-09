@@ -1,4 +1,4 @@
-package com.noxcrew.noxesium.feature.ui;
+package com.noxcrew.noxesium.feature;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;

@@ -1,16 +1,14 @@
-package com.noxcrew.noxesium.feature.ui.wrapper;
+package com.noxcrew.noxesium.feature.ui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.noxcrew.noxesium.NoxesiumMod;
-import com.noxcrew.noxesium.config.MapLocation;
-import com.noxcrew.noxesium.feature.rule.ServerRules;
-import com.noxcrew.noxesium.mixin.feature.component.ext.MinecraftExt;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.state.MapRenderState;
 import net.minecraft.core.component.DataComponents;
@@ -20,62 +18,53 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.MapItem;
-import net.minecraft.world.level.saveddata.maps.MapId;
-import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import org.joml.Matrix4f;
 
 /**
  * Renders heldheld maps as UI elements.
  */
-public class MapUiWrapper extends ElementWrapper {
+public class CustomMapUiWidget implements LayeredDraw.Layer {
 
     private static final RenderType MAP_BACKGROUND = RenderType.text(ResourceLocation.withDefaultNamespace("textures/map/map_background.png"));
     private static final RenderType MAP_BACKGROUND_CHECKERBOARD = RenderType.text(
-            ResourceLocation.withDefaultNamespace("textures/map/map_background_checkerboard.png")
+        ResourceLocation.withDefaultNamespace("textures/map/map_background_checkerboard.png")
     );
-
-    /**
-     * Returns whether a map is being held in the given arm.
-     */
-    private static boolean hasMapItem(Minecraft minecraft, HumanoidArm arm) {
-        var mainArm = minecraft.player.getMainArm();
-        var hand = mainArm == arm ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-        var item = minecraft.player.getItemInHand(hand);
-        var otherHand = minecraft.player.getItemInHand(
-                hand == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND
-        );
-        return item.is(Items.FILLED_MAP) && (hand == InteractionHand.OFF_HAND || !otherHand.isEmpty());
-    }
-
     private final MapRenderState mapRenderState = new MapRenderState();
 
-    public MapUiWrapper() {
-        // Update every tick for the map contents
-        registerVariable("client tick", (minecraft, partialTicks) -> ((MinecraftExt) minecraft).getClientTickCount());
-
-        // Update as the setting changes
-        registerVariable("main_hand", (minecraft, partialTicks) -> minecraft.options.mainHand());
-        registerVariable("size", (minecraft, partialTicks) -> NoxesiumMod.getInstance().getConfig().mapUiSize);
-        registerVariable("location", (minecraft, partialTicks) -> NoxesiumMod.getInstance().getConfig().mapUiLocation);
-    }
-
     @Override
-    protected void render(GuiGraphics graphics, Minecraft minecraft, int screenWidth, int screenHeight, Font font, DeltaTracker deltaTracker) {
-        // Allow the server to temporarily disable the UI from drawing during loading screens
-        if (ServerRules.DISABLE_MAP_UI.getValue()) return;
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) return;
 
+        var font = minecraft.font;
         var offset = FabricLoader.getInstance().isModLoaded("toggle-sprint-display") ? font.lineHeight : 0;
-        var pose = graphics.pose();
+        var pose = guiGraphics.pose();
         var mainArm = minecraft.player.getMainArm();
         for (var arm : HumanoidArm.values()) {
-            if (hasMapItem(minecraft, arm)) {
-                renderMap(minecraft, graphics, deltaTracker, pose, arm, minecraft.player.getItemInHand(
-                        mainArm == arm ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND
+            if (hasMapItem(minecraft.player, arm)) {
+                renderMap(minecraft, guiGraphics, deltaTracker, pose, arm, minecraft.player.getItemInHand(
+                    mainArm == arm ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND
                 ), offset);
             }
         }
     }
 
+    /**
+     * Returns whether a map is being held in the given arm.
+     */
+    private static boolean hasMapItem(LocalPlayer player, HumanoidArm arm) {
+        var mainArm = player.getMainArm();
+        var hand = mainArm == arm ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+        var item = player.getItemInHand(hand);
+        var otherHand = player.getItemInHand(
+            hand == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND
+        );
+        return item.is(Items.FILLED_MAP) && (hand == InteractionHand.OFF_HAND || !otherHand.isEmpty());
+    }
+
+    /**
+     * Renders a map to the UI.
+     */
     private void renderMap(Minecraft minecraft, GuiGraphics graphics, DeltaTracker deltaTracker, PoseStack pose, HumanoidArm arm, ItemStack item, int offset) {
         pose.pushPose();
         var scale = 1f / ((float) minecraft.getWindow().getGuiScale()) * 4f * ((float) NoxesiumMod.getInstance().getConfig().mapUiSize);

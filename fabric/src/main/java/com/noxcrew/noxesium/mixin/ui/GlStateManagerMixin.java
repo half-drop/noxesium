@@ -1,4 +1,4 @@
-package com.noxcrew.noxesium.mixin.ui.render;
+package com.noxcrew.noxesium.mixin.ui;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.noxcrew.noxesium.feature.ui.wrapper.ElementWrapper;

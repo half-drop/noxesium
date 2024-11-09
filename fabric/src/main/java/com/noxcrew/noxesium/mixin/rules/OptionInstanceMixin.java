@@ -1,4 +1,4 @@
-package com.noxcrew.noxesium.mixin.ui.render;
+package com.noxcrew.noxesium.mixin.rules;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -6,8 +6,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.rule.ServerRuleModule;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
-import com.noxcrew.noxesium.feature.ui.wrapper.ChatWrapper;
-import com.noxcrew.noxesium.feature.ui.wrapper.ElementManager;
 import net.minecraft.client.GraphicsStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
@@ -33,9 +31,6 @@ public abstract class OptionInstanceMixin<T> {
         if (instance == options.touchscreen() ||
             instance == options.notificationDisplayTime()) {
             NoxesiumMod.syncGuiScale();
-        }
-        if (instance == options.chatLineSpacing()) {
-            ElementManager.getInstance(ChatWrapper.class).requestRedraw();
         }
         return original.call(instance);
     }
