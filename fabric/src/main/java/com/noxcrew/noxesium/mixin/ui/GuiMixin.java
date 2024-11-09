@@ -6,6 +6,7 @@ import com.noxcrew.noxesium.config.NoxesiumConfig;
 import com.noxcrew.noxesium.feature.entity.SpatialInteractionEntityTree;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.CustomMapUiWidget;
+import com.noxcrew.noxesium.feature.ui.layer.LayeredDrawExtension;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -90,7 +91,7 @@ public abstract class GuiMixin {
      */
     @Unique
     private void noxesium$addRenderLayer(String name, LayeredDraw.Layer layer, Supplier<Boolean> condition) {
-        this.layers.noxesium$addLayer(name, ((guiGraphics, deltaTracker) -> {
+        ((LayeredDrawExtension) this.layers).noxesium$addLayer(name, ((guiGraphics, deltaTracker) -> {
             // Check that the main GUI is not hidden
             if (Minecraft.getInstance().options.hideGui) return;
 
