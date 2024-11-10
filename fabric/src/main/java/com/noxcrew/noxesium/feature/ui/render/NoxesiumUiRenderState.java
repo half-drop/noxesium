@@ -1,14 +1,13 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
+import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.LayeredDraw;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,67 +15,92 @@ import java.util.List;
  */
 public class NoxesiumUiRenderState implements Closeable {
 
-    private ElementBuffer buffer;
-
-    public NoxesiumUiRenderState() {
-        RenderSystem.assertOnRenderThread();
-
-    }
+    private final List<ElementBufferGroup> groups = new ArrayList<>();
+    private int lastSize = 0;
 
     /**
      * Renders the given layered draw object to the screen.
      */
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
-        // Set up the buffer
-        if (buffer == null) {
-            buffer = new ElementBuffer();
+        // Update which groups exist
+        if (lastSize != layeredDraw.size()) {
+            try {
+                resetGroups();
+            } catch (IOException e) {
+                NoxesiumMod.getInstance().getLogger().error("Failed to reset buffer groups", e);
+            }
+
+            // Determine all layers ordered and flattened, then
+            // split them up into
+            var flattened = layeredDraw.flatten();
+            lastSize = flattened.size();
+
+            // Start by splitting into 4 partitions
+            var chunked = chunked(flattened, lastSize / 4);
+            for (var chunk : chunked) {
+                var group = new ElementBufferGroup();
+                group.addLayers(chunk);
+                groups.add(group);
+            }
         }
 
-        try {
-            // Prepare the buffer to be drawn to
-            buffer.bind(guiGraphics);
-
-            // Draw the gui graphics onto the buffer
-            guiGraphics.pose().pushPose();
-            for (var layer : layeredDraw.layers()) {
-                renderLayer(guiGraphics, deltaTracker, layer);
+        // Tick the groups, possibly redrawing the buffer contents, if any buffers got drawn to
+        // we want to unbind the buffer afterwards
+        var bound = false;
+        for (var group : groups) {
+            if (group.update(guiGraphics, deltaTracker)) {
+                bound = true;
             }
-            guiGraphics.pose().popPose();
-
-            // Run PBO snapshot creation logic
-            buffer.snapshot();
-        } finally {
+        }
+        if (bound) {
             BufferHelper.unbind(guiGraphics);
         }
 
-        // Finally we can draw the buffer to the actual screen
-        BufferHelper.draw(List.of(buffer));
+        // Draw the groups
+        for (var group : groups) {
+            var buffer = group.buffer();
+            if (group.shouldUseBuffer()) {
+                // If the buffer is valid we use it to draw
+                BufferHelper.prepare();
+                buffer.draw();
+            } else {
+                // If the buffer is invalid we draw directly
+                BufferHelper.unprepare();
+                group.drawDirectly(guiGraphics, deltaTracker);
+            }
+        }
+
+        // Always break down the buffer state after we are done!
+        BufferHelper.unprepare();
     }
 
     /**
-     * Renders a single layer.
+     * Destroys all previous groups.
      */
-    private void renderLayer(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayer layer) {
-        switch (layer) {
-            case NoxesiumLayer.Layer single -> {
-                single.layer().render(guiGraphics, deltaTracker);
-                guiGraphics.pose().translate(0f, 0f, LayeredDraw.Z_SEPARATION);
-            }
-            case NoxesiumLayer.LayerGroup group -> {
-                if (group.condition().getAsBoolean()) {
-                    for (var subLayer : group.layers()) {
-                        renderLayer(guiGraphics, deltaTracker, subLayer);
-                    }
-                }
-            }
+    private void resetGroups() throws IOException {
+        for (var group : groups) {
+            group.close();
         }
+        groups.clear();
     }
 
     @Override
     public void close() throws IOException {
-        if (buffer != null) {
-            buffer.close();
+        resetGroups();
+    }
+
+    /**
+     * Returns a chunked version of the input list where each chunk is at most [amount] large.
+     */
+    private <T> List<List<T>> chunked(List<T> input, int amount) {
+        var result = new ArrayList<List<T>>();
+        var index = 0;
+        var total = input.size();
+        while (index < total) {
+            var group = Math.min(amount, total - index);
+            result.add(input.subList(index, index + group));
+            index += group;
         }
-        buffer = null;
+        return result;
     }
 }

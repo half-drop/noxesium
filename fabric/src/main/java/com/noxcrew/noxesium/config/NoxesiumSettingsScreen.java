@@ -23,8 +23,12 @@ public class NoxesiumSettingsScreen extends OptionsSubScreen {
             NoxesiumOptions.dumpOutgoingPackets(),
             NoxesiumOptions.extendedPacketLogging(),
             NoxesiumOptions.playerGlowingKeybinds(),
-            NoxesiumOptions.qibSystemDebugVisuals(),
-            NoxesiumOptions.experimentalPatches()
+            NoxesiumOptions.qibSystemDebugVisuals()
+        );
+        this.list.addBig(NoxesiumOptions.experimentalPatches());
+        this.list.addSmall(
+            NoxesiumOptions.minUiFramerate(),
+            NoxesiumOptions.maxUiFramerate()
         );
     }
 }

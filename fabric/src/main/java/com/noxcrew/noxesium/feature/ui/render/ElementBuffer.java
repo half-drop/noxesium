@@ -45,49 +45,56 @@ public class ElementBuffer implements Closeable {
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
     /**
+     * Processes the contents of the PBO if it's available.
+     */
+    public boolean process() {
+        if (pbo == null) return false;
+        if (fence == null) return false;
+
+        // Wait for actual data to be available
+        if (fence.awaitCompletion(0L)) {
+            var result = false;
+            try (var view = pbo.read()) {
+                if (view != null) {
+                    var source = view.data();
+                    var newSnapshot = new byte[source.remaining()];
+                    source.get(newSnapshot, 0, newSnapshot.length);
+                    if (lastSnapshot != null) {
+                        result = Arrays.equals(lastSnapshot, newSnapshot);
+                    }
+                    lastSnapshot = newSnapshot;
+                }
+            }
+            fence = null;
+            return result;
+        }
+        return false;
+    }
+
+    /**
      * Snapshots the current buffer contents to a PBO.
      */
     public void snapshot() {
         if (pbo == null) return;
+        if (fence != null) return;
 
-        if (fence != null) {
-            // Wait for actual data to be available
-            if (fence.awaitCompletion(0L)) {
-                try (var view = pbo.read()) {
-                    if (view != null) {
-                        var source = view.data();
-                        var newSnapshot = new byte[source.remaining()];
-                        source.get(newSnapshot, 0, newSnapshot.length);
-                        if (lastSnapshot != null) {
-                            if (Arrays.equals(lastSnapshot, newSnapshot)) {
-                                // TODO Slow down the rendering and start re-using the buffer!
-                            }
-                        }
-                        lastSnapshot = newSnapshot;
-                    }
-                }
-                fence = null;
-            }
-        } else {
-            // Read the contents of the buffer to the PBO
-            var window = Minecraft.getInstance().getWindow();
-            var width = window.getWidth();
-            var height = window.getHeight();
+        // Read the contents of the buffer to the PBO
+        var window = Minecraft.getInstance().getWindow();
+        var width = window.getWidth();
+        var height = window.getHeight();
 
-            // Bind the PBO to tell the GPU to read the pixels into it
-            pbo.bind();
-            GL11.glReadPixels(
-                0, 0,
-                width, height,
-                GL11.GL_RGBA,
-                GL11.GL_UNSIGNED_BYTE,
-                0
-            );
+        // Bind the PBO to tell the GPU to read the pixels into it
+        pbo.bind();
+        GL11.glReadPixels(
+            0, 0,
+            width, height,
+            GL11.GL_RGBA,
+            GL11.GL_UNSIGNED_BYTE,
+            0
+        );
 
-            // Start waiting for the GPU to return the data
-            fence = new GpuFence();
-            snapshot();
-        }
+        // Start waiting for the GPU to return the data
+        fence = new GpuFence();
     }
 
     /**

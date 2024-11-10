@@ -95,4 +95,58 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
             }
         }
     }
+
+    /**
+     * Returns a flattened list of this object.
+     */
+    public List<NoxesiumLayer.Layer> flatten() {
+        var result = new ArrayList<NoxesiumLayer.Layer>();
+        for (var layer : layers) {
+            switch (layer) {
+                case NoxesiumLayer.Layer single -> result.add(single);
+                case NoxesiumLayer.LayerGroup group -> process(group, result);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Adds the contents of the layer group to the given list.
+     */
+    private void process(NoxesiumLayer.LayerGroup target, List<NoxesiumLayer.Layer> list) {
+        for (var layer : target.layers()) {
+            switch (layer) {
+                case NoxesiumLayer.Layer single -> list.add(single);
+                case NoxesiumLayer.LayerGroup group -> process(group, list);
+            }
+        }
+    }
+
+    /**
+     * Returns the size of this layered draw.
+     */
+    public int size() {
+        var total = 0;
+        for (var layer : layers) {
+            switch (layer) {
+                case NoxesiumLayer.Layer ignored -> total++;
+                case NoxesiumLayer.LayerGroup layerGroup -> total += count(layerGroup);
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Returns the size of the given layer group.
+     */
+    private int count(NoxesiumLayer.LayerGroup group) {
+        var total = 0;
+        for (var layer : group.layers()) {
+            switch (layer) {
+                case NoxesiumLayer.Layer ignored -> total++;
+                case NoxesiumLayer.LayerGroup layerGroup -> total += count(layerGroup);
+            }
+        }
+        return total;
+    }
 }

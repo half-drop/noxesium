@@ -20,8 +20,6 @@
   "noxesium.options.screen.noxesium": "Noxesium Settings",
   "noxesium.options.fps_overlay.name": "FPS Overlay",
   "noxesium.options.fps_overlay.tooltip": "Adds a small overlay that shows the current fps in the top left corner of your screen.",
-  "noxesium.options.experimental_patches.name": "Experimental Optimizations",
-  "noxesium.options.experimental_patches.tooltip.v2": "§fEnables experimental optimizations that dynamically adjust the frame rate at which UI elements are rendered.\n\n§cWarning: If you experience any UI rendering issues while using this setting, please report issues to Noxesium, not the other mods involved.",
   "noxesium.options.reset_toggle_keys.name": "Reset Toggle Keys on Death",
   "noxesium.options.reset_toggle_keys.tooltip": "Whether to reset toggled keys (sprint/sneak) when you respawn. Normally enabled in vanilla.",
   "noxesium.options.render_maps_as_ui.name": "Render Maps in UI",
@@ -41,6 +39,13 @@
   "noxesium.options.extended_packet_logging.tooltip": "Adds additional error logs to various types of invalid packet exceptions.\n\n§cIntended for server developers.",
   "noxesium.options.enable_glowing_keybinds.name": "Team Glow Keybinds",
   "noxesium.options.enable_glowing_keybinds.tooltip": "Adds additional keybinds which make players glow based on their team color. Requires restarting game to apply!\n\n§cKeybinds only work while spectating.",
+
+  "noxesium.options.experimental_patches.name": "Experimental Optimizations",
+  "noxesium.options.experimental_patches.tooltip.v2": "§fEnables experimental optimizations that dynamically adjust the framerate at which UI elements are rendered.\n\n§cWarning: If you experience any UI rendering issues while using this setting, please report issues to Noxesium, not the other mods involved.",
+  "noxesium.options.min_ui_framerate.name": "Min UI Framerate",
+  "noxesium.options.min_ui_framerate.tooltip": "Sets the lowest framerate at which UI elements are rendered. This controls how quickly the UI will adapt to controls.",
+  "noxesium.options.max_ui_framerate.name": "Max UI Framerate",
+  "noxesium.options.max_ui_framerate.tooltip": "Sets the highest framerate at which UI elements are rendered.\n\n§cSetting this to Unlimited has a very high performance impact!",
 
   "noxesium.options.enum.default": "Ask server",
   "noxesium.options.enum.true": "Always",

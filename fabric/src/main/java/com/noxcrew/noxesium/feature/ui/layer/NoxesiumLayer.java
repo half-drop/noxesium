@@ -25,13 +25,13 @@ public sealed interface NoxesiumLayer {
      * Stores a singular layer that is always rendered.
      */
     record Layer(
-        int id,
+        int index,
         String name,
         LayeredDraw.Layer layer
     ) implements NoxesiumLayer {
 
-        // A global variable used for layer ids!
-        private static int LAST_LAYER_ID = -1;
+        // A global variable used for layer indices!
+        private static int LAST_LAYER_INDEX = -1;
         private static final Map<Integer, String> STANDARD_LAYER_NAMES = new HashMap<>();
 
         static {
@@ -53,11 +53,11 @@ public sealed interface NoxesiumLayer {
         }
 
         public Layer(LayeredDraw.Layer layer) {
-            this(++LAST_LAYER_ID, STANDARD_LAYER_NAMES.getOrDefault(LAST_LAYER_ID, "Layer #" + LAST_LAYER_ID), layer);
+            this(++LAST_LAYER_INDEX, STANDARD_LAYER_NAMES.getOrDefault(LAST_LAYER_INDEX, "Layer #" + LAST_LAYER_INDEX), layer);
         }
 
         public Layer(String name, LayeredDraw.Layer layer) {
-            this(++LAST_LAYER_ID, name, layer);
+            this(++LAST_LAYER_INDEX, name, layer);
         }
     }
 }
