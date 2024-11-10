@@ -89,9 +89,9 @@ public abstract class GuiMixin {
             var state = ((LayeredDrawExtension) ((GuiExt) Minecraft.getInstance().gui).getLayers()).noxesium$get().state();
             if (state != null) {
                 for (var group : state.groups()) {
-                    var framerate = group.framerate();
-                    var rate = framerate == 260 ? "Unlimited" : framerate;
-                    text.add(Component.literal("§b" + group.layerNames() + ": §f" + rate));
+                    var renderFps = group.renderFramerate() >= 260 ? "Unlimited" : group.renderFramerate();
+                    var checkFps = group.updateFramerate();
+                    text.add(Component.literal("§" + (group.optimizing() ? "b" : "c") + group.layerNames() + ": §f" + renderFps + " / " + checkFps));
                 }
             }
         }

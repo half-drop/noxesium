@@ -1,5 +1,7 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.noxcrew.noxesium.NoxesiumMod;
+import com.noxcrew.noxesium.feature.ui.LayerWithReference;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -19,13 +21,33 @@ import java.util.stream.Collectors;
 public class ElementBufferGroup implements Closeable {
 
     private final ElementBuffer buffer = new ElementBuffer();
-    private final List<NoxesiumLayer.Layer> layers = new ArrayList<>();
-    private boolean lastFrameMatched = false;
+    private final List<LayerWithReference> layers = new ArrayList<>();
+
+    /**
+     * Stores whether this element should currently be rendered
+     * through the buffer, unless we are running a check.
+     */
+    private boolean optimizing = true;
+
+    /**
+     * The current fps at which we check for optimization steps.
+     */
+    private double checkFps = 1.0;
+
+    /**
+     * The current fps at which we re-render the UI elements.
+     */
+    private double renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
+
+    private long lastSkippedRender = -1;
+    private long nextCheck = -1;
+    private long nextRender = -1;
+    private boolean justRenderedBuffer = false;
 
     /**
      * Returns an immutable copy of the layers of this group.
      */
-    public List<NoxesiumLayer.Layer> layers() {
+    public List<LayerWithReference> layers() {
         return Collections.unmodifiableList(layers);
     }
 
@@ -37,17 +59,24 @@ public class ElementBufferGroup implements Closeable {
     }
 
     /**
-     * Resets the frame rate of this element.
+     * Returns whether optimizations are currently enabled.
      */
-    public void reset() {
-        lastFrameMatched = false;
+    public boolean optimizing() {
+        return optimizing;
     }
 
     /**
      * The current frame rate of this group.
      */
-    public int framerate() {
-        return lastFrameMatched ? 0 : 260;
+    public int renderFramerate() {
+        return (int) Math.floor(renderFps);
+    }
+
+    /**
+     * The current update frame rate of this group.
+     */
+    public double updateFramerate() {
+        return checkFps;
     }
 
     /**
@@ -55,36 +84,92 @@ public class ElementBufferGroup implements Closeable {
      * It is given that the buffer is valid if this is true.
      */
     public boolean shouldUseBuffer() {
-        // TODO Don't use buffer if a layer is constantly changing
-        return buffer.isValid();
+        return buffer.isValid() && (justRenderedBuffer || optimizing);
     }
 
     /**
      * Updates the current state of this group.
      */
-    public boolean update(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-        // If the last frame matched we stop updating the buffer!
-        if (buffer.isValid() && lastFrameMatched) return false;
+    public boolean update(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        // Always start by processing the current buffer
+        var frameComparison = buffer.process();
+        if (frameComparison.isPresent()) {
+            if (frameComparison.get()) {
+                // The frames matched, slow down the rendering!
+                renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
+            } else {
+                // The frames did not match, speed up rendering!
+                renderFps = Math.min(NoxesiumMod.getInstance().getConfig().maxUiFramerate, renderFps * 2);
+            }
+        }
+
+        // Start by determining if we need to run a buffer check yet, we skip
+        // updates if we are not optimizing and there is no check to run
+        if (nextCheck == -1) {
+            nextCheck = nanoTime;
+        }
+
+        // Skip the update until we reach the next render time
+        var shouldCheck = nextCheck <= nanoTime;
+        if (!shouldCheck && !optimizing) {
+            justRenderedBuffer = false;
+            return false;
+        }
+
+        // Determine if we are at the next render threshold yet, otherwise
+        // we wait until we have reached it
+
+        // Initialize the value if it's missing
+        if (nextRender == -1) {
+            nextRender = nanoTime;
+        }
+
+        // Determine if any boolean condition has recently changed, if so we
+        // make an exception and re-render the buffer this frame!
+        var hasChangedRecently = false;
+        for (var layer : layers) {
+            if (layer.group().hasChangedRecently()) {
+                hasChangedRecently = true;
+                break;
+            }
+        }
+        if (!hasChangedRecently) {
+            // Skip the update until we reach the next render time
+            if (nextRender > nanoTime) {
+                lastSkippedRender = nanoTime;
+                justRenderedBuffer = false;
+                return false;
+            }
+
+            // Set the next render time
+            nextRender = nanoTime + (long) Math.floor(((1 / renderFps) * 1000000000));
+        }
 
         // Prepare the buffer to be drawn to
         if (buffer.bind(guiGraphics)) {
-            // Draw the gui graphics onto the buffer
-            // TODO Start keeping buffers around and drawing them increasingly infrequent when they match up
-            // TODO Merge together neighboring buffers that are on the same cycle
+            // Draw the layers onto the buffer
             for (var layer : layers) {
-                renderLayer(guiGraphics, deltaTracker, layer);
+                if (layer.group() == null || layer.group().test()) {
+                    renderLayer(guiGraphics, deltaTracker, layer.layer());
+                }
             }
 
             // Actually render things to this buffer
             guiGraphics.flush();
 
-            // Run PBO snapshot creation logic
-            // TODO Only run PBO logic whenever want
-            // to know about its results as its slow
-            buffer.snapshot();
-            lastFrameMatched = buffer.process();
+            // Run PBO snapshot creation logic only if we want to run a check
+            if (shouldCheck) {
+                buffer.snapshot();
+
+                // Determine the next check time
+                while (nextCheck <= nanoTime) {
+                    nextCheck = nanoTime + (long) Math.floor(((1 / checkFps) * 1000000000));
+                }
+            }
+            justRenderedBuffer = true;
             return true;
         }
+        justRenderedBuffer = false;
         return false;
     }
 
@@ -93,24 +178,24 @@ public class ElementBufferGroup implements Closeable {
      */
     public void drawDirectly(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         for (var layer : layers) {
-            renderLayer(guiGraphics, deltaTracker, layer);
+            if (layer.group() == null || layer.group().test()) {
+                renderLayer(guiGraphics, deltaTracker, layer.layer());
+            }
         }
     }
 
     /**
      * Adds the given layers to this group.
      */
-    public void addLayers(Collection<NoxesiumLayer.Layer> layers) {
+    public void addLayers(Collection<LayerWithReference> layers) {
         this.layers.addAll(layers);
-        reset();
     }
 
     /**
      * Removes the given layers from this group.
      */
-    public void removeLayers(Collection<NoxesiumLayer.Layer> layers) {
+    public void removeLayers(Collection<LayerWithReference> layers) {
         this.layers.removeAll(layers);
-        reset();
     }
 
     /**
@@ -166,7 +251,7 @@ public class ElementBufferGroup implements Closeable {
      * Returns the names of this group's layers as a readable string.
      */
     public String layerNames() {
-        return layers().stream().map(NoxesiumLayer.Layer::name).collect(Collectors.joining("/"));
+        return layers().stream().map(LayerWithReference::layer).map(NoxesiumLayer.Layer::name).collect(Collectors.joining("/"));
     }
 
     @Override

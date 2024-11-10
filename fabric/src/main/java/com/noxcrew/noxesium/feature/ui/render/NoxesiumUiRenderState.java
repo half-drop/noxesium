@@ -1,6 +1,7 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
 import com.noxcrew.noxesium.NoxesiumMod;
+import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -29,7 +30,10 @@ public class NoxesiumUiRenderState implements Closeable {
      * Renders the given layered draw object to the screen.
      */
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
+        var nanoTime = System.nanoTime();
+
         // TODO Also apply optimizations to GameRenderer#this.minecraft.screen.renderWithTooltip!
+        // TODO Merge together neighboring buffers that are on the same cycle
 
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
@@ -41,7 +45,6 @@ public class NoxesiumUiRenderState implements Closeable {
 
             // Determine all layers ordered and flattened, then
             // split them up into
-            // TODO Add group boolean suppliers
             var flattened = layeredDraw.flatten();
             lastSize = flattened.size();
 
@@ -54,11 +57,16 @@ public class NoxesiumUiRenderState implements Closeable {
             }
         }
 
+        // Update for each group what the condition is
+        for (var group : layeredDraw.subgroups()) {
+            group.update();
+        }
+
         // Tick the groups, possibly redrawing the buffer contents, if any buffers got drawn to
         // we want to unbind the buffer afterwards
         var bound = false;
         for (var group : groups) {
-            if (group.update(guiGraphics, deltaTracker)) {
+            if (group.update(nanoTime, guiGraphics, deltaTracker)) {
                 bound = true;
             }
         }

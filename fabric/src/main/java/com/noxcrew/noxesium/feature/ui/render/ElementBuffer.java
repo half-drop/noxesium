@@ -24,6 +24,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -52,9 +53,9 @@ public class ElementBuffer implements Closeable {
     /**
      * Processes the contents of the PBO if it's available.
      */
-    public boolean process() {
-        if (pbo == null) return false;
-        if (fence == null) return false;
+    public Optional<Boolean> process() {
+        if (pbo == null) return Optional.empty();
+        if (fence == null) return Optional.empty();
 
         // Wait for actual data to be available
         if (fence.awaitCompletion(0L)) {
@@ -78,9 +79,9 @@ public class ElementBuffer implements Closeable {
                 GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
             }
             fence = null;
-            return result;
+            return Optional.of(result);
         }
-        return false;
+        return Optional.empty();
     }
 
     /**

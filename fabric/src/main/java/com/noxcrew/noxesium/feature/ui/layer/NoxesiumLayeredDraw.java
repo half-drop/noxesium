@@ -2,6 +2,7 @@ package com.noxcrew.noxesium.feature.ui.layer;
 
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
+import com.noxcrew.noxesium.feature.ui.LayerWithReference;
 import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -21,6 +22,7 @@ import java.util.List;
 public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
 
     private final List<NoxesiumLayer> layers = new ArrayList<>();
+    private final List<NoxesiumLayer.LayerGroup> subgroups = new ArrayList<>();
     private NoxesiumUiRenderState state;
 
     /**
@@ -39,10 +41,20 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
     }
 
     /**
+     * Returns all groups within this layered draw.
+     */
+    public List<NoxesiumLayer.LayerGroup> subgroups() {
+        return subgroups;
+    }
+
+    /**
      * Adds a new layer to this object.
      */
     public void add(NoxesiumLayer layer) {
         layers.add(layer);
+        if (layer instanceof NoxesiumLayer.LayerGroup group) {
+            subgroups.add(group);
+        }
     }
 
     /**
@@ -110,11 +122,11 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
     /**
      * Returns a flattened list of this object.
      */
-    public List<NoxesiumLayer.Layer> flatten() {
-        var result = new ArrayList<NoxesiumLayer.Layer>();
+    public List<LayerWithReference> flatten() {
+        var result = new ArrayList<LayerWithReference>();
         for (var layer : layers) {
             switch (layer) {
-                case NoxesiumLayer.Layer single -> result.add(single);
+                case NoxesiumLayer.Layer single -> result.add(new LayerWithReference(single, null));
                 case NoxesiumLayer.LayerGroup group -> process(group, result);
             }
         }
@@ -124,10 +136,10 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
     /**
      * Adds the contents of the layer group to the given list.
      */
-    private void process(NoxesiumLayer.LayerGroup target, List<NoxesiumLayer.Layer> list) {
+    private void process(NoxesiumLayer.LayerGroup target, List<LayerWithReference> list) {
         for (var layer : target.layers()) {
             switch (layer) {
-                case NoxesiumLayer.Layer single -> list.add(single);
+                case NoxesiumLayer.Layer single -> list.add(new LayerWithReference(single, target));
                 case NoxesiumLayer.LayerGroup group -> process(group, list);
             }
         }

@@ -2,6 +2,7 @@ package com.noxcrew.noxesium.feature.ui.layer;
 
 import net.minecraft.client.gui.LayeredDraw;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,19 +16,70 @@ public sealed interface NoxesiumLayer {
     /**
      * Stores a collection of layers.
      */
-    record LayerGroup(
-        List<NoxesiumLayer> layers,
-        BooleanSupplier condition
-    ) implements NoxesiumLayer {
+    final class LayerGroup implements NoxesiumLayer {
+
+        private final List<NoxesiumLayer> layers;
+        private final List<NoxesiumLayer.LayerGroup> groups;
+        private final BooleanSupplier condition;
+        private boolean conditionResult = false;
+        private boolean changedRecently = false;
+
+        LayerGroup(List<NoxesiumLayer> layers, BooleanSupplier condition) {
+            this.layers = layers;
+            this.condition = condition;
+
+            // Pre-filter which groups are a layer group object
+            this.groups = new ArrayList<>();
+            for (var layer : layers) {
+                if (layer instanceof NoxesiumLayer.LayerGroup group) {
+                    this.groups.add(group);
+                }
+            }
+        }
+
+        /**
+         * Returns the layers in this group.
+         */
+        public List<NoxesiumLayer> layers() {
+            return layers;
+        }
+
+        /**
+         * Returns whether this group's condition has recently changed.
+         */
+        public boolean hasChangedRecently() {
+            return changedRecently;
+        }
+
+        /**
+         * Returns the condition result.
+         */
+        public boolean test() {
+            return conditionResult;
+        }
+
+        /**
+         * Updates the current condition result.
+         */
+        public void update() {
+            var oldResult = conditionResult;
+            conditionResult = condition.getAsBoolean();
+            changedRecently = oldResult != conditionResult;
+
+            // Recursively call this for all layers in this group too!
+            for (var group : groups) {
+                group.update();
+            }
+        }
     }
 
     /**
      * Stores a singular layer that is always rendered.
      */
     record Layer(
-        int index,
-        String name,
-        LayeredDraw.Layer layer
+            int index,
+            String name,
+            LayeredDraw.Layer layer
     ) implements NoxesiumLayer {
 
         // A global variable used for layer indices!
