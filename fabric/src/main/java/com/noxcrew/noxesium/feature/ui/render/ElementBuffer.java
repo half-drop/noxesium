@@ -62,18 +62,21 @@ public class ElementBuffer implements Closeable {
 
             pbo.bind();
 
-            // Bind the buffer with the un*synchronized bit which indicates that we don't care about the current state
-            // and just instantly want this call to return. We are already using a fence to await completion!
-            var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT); // | GL30C.GL_MAP_UNSYNCHRONIZED_BIT);
+            // Bind the buffer and get its contents
+            var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT);
             if (byteBuffer != null) {
                 var newSnapshot = new byte[byteBuffer.remaining()];
                 byteBuffer.get(newSnapshot, 0, newSnapshot.length);
-                if (lastSnapshot != null) {
-                    result = Arrays.equals(lastSnapshot, newSnapshot);
-                }
+
+                // Unbind the buffer after we are done with it
+                GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
+
+                // Compare the two frames to determine if it is unchanged
+                result = Arrays.equals(lastSnapshot, newSnapshot);
                 lastSnapshot = newSnapshot;
+            } else {
+                GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
             }
-            GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
             fence = null;
             return result;
         }

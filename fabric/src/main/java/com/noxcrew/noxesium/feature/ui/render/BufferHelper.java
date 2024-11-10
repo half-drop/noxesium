@@ -64,6 +64,7 @@ public class BufferHelper {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
         // Restore the original state
+        allowBlendChanges = true;
         if (blend) {
             RenderSystem.enableBlend();
         } else {
@@ -72,18 +73,14 @@ public class BufferHelper {
         GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
 
         // Mark that we have unbound
-        allowBlendChanges = true;
         configured = false;
     }
 
     /**
      * Unbinds any current buffer, re-binding the main render target.
      */
-    public static void unbind(GuiGraphics guiGraphics) {
+    public static void unbind() {
         RenderSystem.assertOnRenderThread();
-
-        // Flush the gui graphics to finish drawing to the buffer what was in it
-        guiGraphics.flush();
 
         // Bind the main render target to replace this target,
         // we do not need to unbind this buffer first as it

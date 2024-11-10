@@ -37,6 +37,13 @@ public class ElementBufferGroup implements Closeable {
     }
 
     /**
+     * Resets the frame rate of this element.
+     */
+    public void reset() {
+        lastFrameMatched = false;
+    }
+
+    /**
      * The current frame rate of this group.
      */
     public int framerate() {
@@ -57,7 +64,7 @@ public class ElementBufferGroup implements Closeable {
      */
     public boolean update(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         // If the last frame matched we stop updating the buffer!
-        if (lastFrameMatched) return false;
+        if (buffer.isValid() && lastFrameMatched) return false;
 
         // Prepare the buffer to be drawn to
         if (buffer.bind(guiGraphics)) {
@@ -67,6 +74,9 @@ public class ElementBufferGroup implements Closeable {
             for (var layer : layers) {
                 renderLayer(guiGraphics, deltaTracker, layer);
             }
+
+            // Actually render things to this buffer
+            guiGraphics.flush();
 
             // Run PBO snapshot creation logic
             // TODO Only run PBO logic whenever want
@@ -92,6 +102,7 @@ public class ElementBufferGroup implements Closeable {
      */
     public void addLayers(Collection<NoxesiumLayer.Layer> layers) {
         this.layers.addAll(layers);
+        reset();
     }
 
     /**
@@ -99,6 +110,7 @@ public class ElementBufferGroup implements Closeable {
      */
     public void removeLayers(Collection<NoxesiumLayer.Layer> layers) {
         this.layers.removeAll(layers);
+        reset();
     }
 
     /**
