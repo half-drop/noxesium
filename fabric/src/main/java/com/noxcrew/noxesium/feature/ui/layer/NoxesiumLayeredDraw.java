@@ -1,11 +1,13 @@
 package com.noxcrew.noxesium.feature.ui.layer;
 
 import com.noxcrew.noxesium.NoxesiumMod;
+import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +22,14 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
 
     private final List<NoxesiumLayer> layers = new ArrayList<>();
     private NoxesiumUiRenderState state;
+
+    /**
+     * Returns the current render state.
+     */
+    @Nullable
+    public NoxesiumUiRenderState state() {
+        return state;
+    }
 
     /**
      * Returns an unmodifiable copy of this object's layers.
@@ -53,7 +63,8 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
     @Override
     public void render(GuiGraphics guiGraphics, @NotNull DeltaTracker deltaTracker) {
         // If experimental patches are disabled we ignore all custom logic.
-        if (NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches()) {
+        if (NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches() ||
+            ServerRules.DISABLE_UI_OPTIMIZATIONS.getValue()) {
             // Destroy the state if it exists
             if (state != null) state = null;
 

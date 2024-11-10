@@ -19,6 +19,13 @@ public class NoxesiumUiRenderState implements Closeable {
     private int lastSize = 0;
 
     /**
+     * Returns all groups in this render state.
+     */
+    public List<ElementBufferGroup> groups() {
+        return groups;
+    }
+
+    /**
      * Renders the given layered draw object to the screen.
      */
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
@@ -32,6 +39,7 @@ public class NoxesiumUiRenderState implements Closeable {
 
             // Determine all layers ordered and flattened, then
             // split them up into
+            // TODO Add group boolean suppliers
             var flattened = layeredDraw.flatten();
             lastSize = flattened.size();
 

@@ -35,21 +35,21 @@ public sealed interface NoxesiumLayer {
         private static final Map<Integer, String> STANDARD_LAYER_NAMES = new HashMap<>();
 
         static {
-            STANDARD_LAYER_NAMES.put(0, "Vanilla - Camera Overlays");
-            STANDARD_LAYER_NAMES.put(1, "Vanilla - Crosshair");
-            STANDARD_LAYER_NAMES.put(2, "Vanilla - Hotbar and Decorations");
-            STANDARD_LAYER_NAMES.put(3, "Vanilla - Experience Level");
-            STANDARD_LAYER_NAMES.put(4, "Vanilla - Effects");
-            STANDARD_LAYER_NAMES.put(5, "Vanilla - Boss Overlay");
-            STANDARD_LAYER_NAMES.put(6, "Vanilla - Sleep Overlay");
-            STANDARD_LAYER_NAMES.put(7, "Vanilla - Demo Overlay");
-            STANDARD_LAYER_NAMES.put(8, "Vanilla - Debug Overlay");
-            STANDARD_LAYER_NAMES.put(9, "Vanilla - Scoreboard");
-            STANDARD_LAYER_NAMES.put(10, "Vanilla - Overlay Message");
-            STANDARD_LAYER_NAMES.put(11, "Vanilla - Title");
-            STANDARD_LAYER_NAMES.put(12, "Vanilla - Chat");
-            STANDARD_LAYER_NAMES.put(13, "Vanilla - Tab List");
-            STANDARD_LAYER_NAMES.put(14, "Vanilla - Subtitle Overlay");
+            STANDARD_LAYER_NAMES.put(0, "Camera Overlays");
+            STANDARD_LAYER_NAMES.put(1, "Crosshair");
+            STANDARD_LAYER_NAMES.put(2, "Hotbar");
+            STANDARD_LAYER_NAMES.put(3, "XP Level");
+            STANDARD_LAYER_NAMES.put(4, "Effects");
+            STANDARD_LAYER_NAMES.put(5, "Bossbar");
+            STANDARD_LAYER_NAMES.put(6, "Sleep Overlay");
+            STANDARD_LAYER_NAMES.put(7, "Demo Overlay");
+            STANDARD_LAYER_NAMES.put(8, "Debug Overlay");
+            STANDARD_LAYER_NAMES.put(9, "Scoreboard");
+            STANDARD_LAYER_NAMES.put(10, "Actionbar");
+            STANDARD_LAYER_NAMES.put(11, "Title");
+            STANDARD_LAYER_NAMES.put(12, "Chat");
+            STANDARD_LAYER_NAMES.put(13, "Tab List");
+            STANDARD_LAYER_NAMES.put(14, "Subtitles");
         }
 
         public Layer(LayeredDraw.Layer layer) {

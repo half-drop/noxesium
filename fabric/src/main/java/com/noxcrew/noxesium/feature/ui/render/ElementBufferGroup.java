@@ -9,6 +9,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -21,10 +22,24 @@ public class ElementBufferGroup implements Closeable {
     private boolean lastFrameMatched = false;
 
     /**
+     * Returns an immutable copy of the layers of this group.
+     */
+    public List<NoxesiumLayer.Layer> layers() {
+        return Collections.unmodifiableList(layers);
+    }
+
+    /**
      * Returns the wrapped buffer of this group.
      */
     public ElementBuffer buffer() {
         return buffer;
+    }
+
+    /**
+     * The current frame rate of this group.
+     */
+    public int framerate() {
+        return lastFrameMatched ? 0 : 260;
     }
 
     /**

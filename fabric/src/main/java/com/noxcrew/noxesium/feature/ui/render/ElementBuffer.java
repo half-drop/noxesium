@@ -7,6 +7,7 @@ import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuFence;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -16,8 +17,12 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL30C;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -54,17 +59,21 @@ public class ElementBuffer implements Closeable {
         // Wait for actual data to be available
         if (fence.awaitCompletion(0L)) {
             var result = false;
-            try (var view = pbo.read()) {
-                if (view != null) {
-                    var source = view.data();
-                    var newSnapshot = new byte[source.remaining()];
-                    source.get(newSnapshot, 0, newSnapshot.length);
-                    if (lastSnapshot != null) {
-                        result = Arrays.equals(lastSnapshot, newSnapshot);
-                    }
-                    lastSnapshot = newSnapshot;
+
+            pbo.bind();
+
+            // Bind the buffer with the un*synchronized bit which indicates that we don't care about the current state
+            // and just instantly want this call to return. We are already using a fence to await completion!
+            var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT); // | GL30C.GL_MAP_UNSYNCHRONIZED_BIT);
+            if (byteBuffer != null) {
+                var newSnapshot = new byte[byteBuffer.remaining()];
+                byteBuffer.get(newSnapshot, 0, newSnapshot.length);
+                if (lastSnapshot != null) {
+                    result = Arrays.equals(lastSnapshot, newSnapshot);
                 }
+                lastSnapshot = newSnapshot;
             }
+            GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
             fence = null;
             return result;
         }

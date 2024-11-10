@@ -7,6 +7,8 @@ import com.noxcrew.noxesium.feature.entity.SpatialInteractionEntityTree;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.CustomMapUiWidget;
 import com.noxcrew.noxesium.feature.ui.layer.LayeredDrawExtension;
+import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
+import com.noxcrew.noxesium.mixin.ui.ext.GuiExt;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -25,7 +27,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Adds additional render layers for Noxesium.
@@ -64,16 +68,32 @@ public abstract class GuiMixin {
         if (NoxesiumMod.getInstance().getConfig().showFpsOverlay) {
             text.add(Component.translatable("debug.fps_overlay", minecraft.getFps()));
         }
-        if (NoxesiumConfig.experimentalPatchesHotkey != null) {
-            text.add(Component.translatable("debug.experimental_patches." + (NoxesiumConfig.experimentalPatchesHotkey ? "on" : "off")));
-        }
         if (NoxesiumMod.getInstance().getConfig().showGameTimeOverlay) {
             text.add(Component.translatable("debug.game_time_overlay", String.format("%.5f", RenderSystem.getShaderGameTime()), (int) (RenderSystem.getShaderGameTime() * 24000)));
         }
+
+        // Add qib system debug information
         if (NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging && minecraft.player != null) {
             text.add(Component.literal("§bEntities in model: §7" + SpatialInteractionEntityTree.getModelContents().size()));
             text.add(Component.literal("§bIn water: " + (minecraft.player.isInWaterOrRain() ? "§aYes" : minecraft.player.noxesium$hasTridentCoyoteTime() ? "§eGrace" : "§cNo")));
             text.add(Component.literal("§bQib behavior amount: §7" + ServerRules.QIB_BEHAVIORS.getValue().size()));
+        }
+
+        // Show extra text if the experimental patches are on
+        if (NoxesiumConfig.experimentalPatchesHotkey != null) {
+            text.add(Component.translatable("debug.experimental_patches." + (NoxesiumConfig.experimentalPatchesHotkey ? "on" : "off")));
+        }
+
+        // If the experimental patches are on we draw the current UI frame rates and group layouts
+        if (Objects.equals(NoxesiumConfig.experimentalPatchesHotkey, true)) {
+            var state = ((LayeredDrawExtension) ((GuiExt) Minecraft.getInstance().gui).getLayers()).noxesium$get().state();
+            if (state != null) {
+                for (var group : state.groups()) {
+                    var framerate = group.framerate();
+                    var rate = framerate == 260 ? "Unlimited" : framerate;
+                    text.add(Component.literal("§b" + group.layers().stream().map(NoxesiumLayer.Layer::name).collect(Collectors.joining("/")) + ": §f" + rate));
+                }
+            }
         }
 
         // Draw all the lines in order
@@ -103,10 +123,10 @@ public abstract class GuiMixin {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     public void onInit(Minecraft minecraft, CallbackInfo ci) {
-        noxesium$addRenderLayer("Noxesium - CustomMapUiWidget", new CustomMapUiWidget(), () -> NoxesiumMod.getInstance().getConfig().shouldRenderMapsInUi() &&
+        noxesium$addRenderLayer("Noxesium Map UI", new CustomMapUiWidget(), () -> NoxesiumMod.getInstance().getConfig().shouldRenderMapsInUi() &&
             !ServerRules.DISABLE_MAP_UI.getValue());
 
-        noxesium$addRenderLayer("Noxesium - Text Overlay", this::noxesium$renderTextOverlay, () -> !this.getDebugOverlay().showDebugScreen() &&
+        noxesium$addRenderLayer("Noxesium Text Overlay", this::noxesium$renderTextOverlay, () -> !this.getDebugOverlay().showDebugScreen() &&
             (NoxesiumMod.getInstance().getConfig().showFpsOverlay ||
                 NoxesiumMod.getInstance().getConfig().showGameTimeOverlay ||
                 NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging ||
