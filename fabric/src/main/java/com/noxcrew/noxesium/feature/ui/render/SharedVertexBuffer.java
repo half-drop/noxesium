@@ -14,7 +14,9 @@ import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Stores a shared vertex buffer for running the blit shader to copy a texture to the screen.
+ * Stores a shared vertex buffer for running the blit shader to copy a render target to the screen.
+ * The vertex buffer is always the same so we re-use it. Vanilla creates them every frame when it
+ * uses the shader but we'll reuse them.
  */
 public class SharedVertexBuffer implements Closeable {
 

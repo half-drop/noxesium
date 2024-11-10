@@ -96,6 +96,9 @@ public class ElementBuffer implements Closeable {
                 0
         );
 
+        // Unbind the PBO so it doesn't get modified afterwards
+        GlStateManager._glBindBuffer(GL30.GL_PIXEL_PACK_BUFFER, 0);
+
         // Start waiting for the GPU to return the data
         fence = new GpuFence();
     }
