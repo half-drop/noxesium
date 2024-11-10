@@ -71,6 +71,7 @@ public class NoxesiumUiRenderState implements Closeable {
                 // If the buffer is valid we use it to draw
                 BufferHelper.prepare();
                 buffer.draw();
+                System.out.println("drew buffer for " + group.layerNames());
             } else {
                 // If the buffer is invalid we draw directly
                 BufferHelper.unprepare();

@@ -91,7 +91,7 @@ public abstract class GuiMixin {
                 for (var group : state.groups()) {
                     var framerate = group.framerate();
                     var rate = framerate == 260 ? "Unlimited" : framerate;
-                    text.add(Component.literal("§b" + group.layers().stream().map(NoxesiumLayer.Layer::name).collect(Collectors.joining("/")) + ": §f" + rate));
+                    text.add(Component.literal("§b" + group.layerNames() + ": §f" + rate));
                 }
             }
         }

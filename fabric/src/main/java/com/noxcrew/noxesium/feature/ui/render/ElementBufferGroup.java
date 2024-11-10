@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Holds a group of layers and the buffer they are rendering into.
@@ -147,6 +148,13 @@ public class ElementBufferGroup implements Closeable {
         guiGraphics.pose().translate(0f, 0f, layer.index() * LayeredDraw.Z_SEPARATION);
         layer.layer().render(guiGraphics, deltaTracker);
         guiGraphics.pose().popPose();
+    }
+
+    /**
+     * Returns the names of this group's layers as a readable string.
+     */
+    public String layerNames() {
+        return layers().stream().map(NoxesiumLayer.Layer::name).collect(Collectors.joining("/"));
     }
 
     @Override
