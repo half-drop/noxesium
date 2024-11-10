@@ -9,13 +9,9 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.ByteBufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexBuffer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.CompiledShaderProgram;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
@@ -26,23 +22,19 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A wrapper around a VertexBuffer used for capturing rendered UI elements
+ * A wrapper around a RenderTarget used for capturing rendered UI elements
  * and re-using them.
  * <p>
- * Inspired by <a href="https://github.com/tr7zw/Exordium">Exordium</a>!
+ * Inspired by <a href="https://github.com/tr7zw/Exordium">Exordium</a>
  */
 public class ElementBuffer implements Closeable {
-
-    private RenderTarget target;
-    private VertexBuffer buffer;
-    private double screenWidth;
-    private double screenHeight;
 
     /**
      * We add an extra buffer that stores a PBO which we use to take
      * snapshots of the current frame.
      */
     private GpuBuffer pbo;
+    private RenderTarget target;
     private GpuFence fence;
     private byte[] lastSnapshot = null;
 
@@ -123,9 +115,13 @@ public class ElementBuffer implements Closeable {
         // If the buffer has been properly created we can bind it
         // and clear it.
         if (isValid()) {
-            target.setClearColor(0, 0, 0, 0);
-            target.clear();
-            target.bindWrite(false);
+            // Bind the render target for writing
+            target.bindWrite(true);
+
+            // Clear the contents of the render target while keeping it bound
+            GlStateManager._clearColor(0, 0, 0, 0);
+            GlStateManager._clearDepth(1.0);
+            GlStateManager._clear(16384 | 256);
             return true;
         }
         return false;
@@ -139,53 +135,22 @@ public class ElementBuffer implements Closeable {
         var width = window.getWidth();
         var height = window.getHeight();
 
-        // Do the screen size calculation manually so we can use doubles which
-        // give necessary precision.
-        var guiScale = (float) window.getGuiScale();
-        var screenWidth = ((float) width) / guiScale;
-        var screenHeight = ((float) height) / guiScale;
-
-        if (target == null || target.width != width || target.height != height || this.screenWidth != screenWidth || this.screenHeight != screenHeight) {
+        if (target == null || target.width != width || target.height != height) {
             if (configuring.compareAndSet(false, true)) {
                 try {
-                    // Close the old buffer
-                    if (buffer != null) {
-                        buffer.close();
-                        buffer = null;
+                    // Create the PBO / re-size an existing buffer instance
+                    if (pbo == null) {
+                        pbo = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
                     }
-                    if (pbo != null) {
-                        pbo.close();
-                        pbo = null;
-                    }
-
-                    // Create a PBO for snapshots
-                    var pbo = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
                     pbo.resize(width * height * 4);
 
-                    // Create a single texture that stretches the entirety of the buffer
-                    var buffer = new VertexBuffer(BufferUsage.STATIC_WRITE);
-                    buffer.bind();
-
-                    // Do not use the main tesselator as it gets cleared at the end of frames.
-                    var builder = new BufferBuilder(new ByteBufferBuilder(4 * 6), VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-                    builder.addVertex(0.0f, screenHeight, 0.0f).setUv(0.0f, 0.0f);
-                    builder.addVertex(screenWidth, screenHeight, 0.0f).setUv(1.0f, 0.0f);
-                    builder.addVertex(screenWidth, 0.0f, 0.0f).setUv(1.0f, 1.0f);
-                    builder.addVertex(0.0f, 0.0f, 0.0f).setUv(0.0f, 1.0f);
-                    buffer.upload(builder.build());
-
                     if (target == null) {
-                        // This constructor internally runs resize!
+                        // This constructor internally runs resize! True indicates that we want
+                        // a depth buffer to be created as well.
                         target = new TextureTarget(width, height, true);
                     } else {
                         target.resize(width, height);
                     }
-
-                    // Assign the buffer instance last!
-                    this.screenWidth = screenWidth;
-                    this.screenHeight = screenHeight;
-                    this.buffer = buffer;
-                    this.pbo = pbo;
                 } finally {
                     configuring.set(false);
                 }
@@ -196,25 +161,19 @@ public class ElementBuffer implements Closeable {
     /**
      * Draws this buffer directly and immediately.
      */
-    protected void draw() {
-        RenderSystem.setShaderTexture(0, target.getColorTextureId());
-        buffer.bind();
-        buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
+    protected void draw(CompiledShaderProgram shader, SharedVertexBuffer buffer) {
+        buffer.draw(shader, target.getColorTextureId());
     }
 
     /**
      * Returns whether the buffer is valid and has been prepared.
      */
     public boolean isValid() {
-        return buffer != null;
+        return target != null;
     }
 
     @Override
     public void close() {
-        if (buffer != null) {
-            buffer.close();
-            buffer = null;
-        }
         if (pbo != null) {
             pbo.close();
             pbo = null;
@@ -228,5 +187,4 @@ public class ElementBuffer implements Closeable {
             target = null;
         }
     }
-
 }

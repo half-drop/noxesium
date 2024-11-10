@@ -1,8 +1,6 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.noxcrew.noxesium.NoxesiumMod;
-import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,6 +16,7 @@ import java.util.List;
 public class NoxesiumUiRenderState implements Closeable {
 
     private final List<ElementBufferGroup> groups = new ArrayList<>();
+    private final SharedVertexBuffer sharedBuffer = new SharedVertexBuffer();
     private int lastSize = 0;
 
     /**
@@ -35,6 +34,9 @@ public class NoxesiumUiRenderState implements Closeable {
 
         // TODO Also apply optimizations to GameRenderer#this.minecraft.screen.renderWithTooltip!
         // TODO Merge together neighboring buffers that are on the same cycle
+
+        // Update the vertex buffer
+        sharedBuffer.resize();
 
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
@@ -80,8 +82,7 @@ public class NoxesiumUiRenderState implements Closeable {
             var buffer = group.buffer();
             if (group.shouldUseBuffer()) {
                 // If the buffer is valid we use it to draw
-                BufferHelper.prepare();
-                buffer.draw();
+                buffer.draw(BufferHelper.prepare(sharedBuffer), sharedBuffer);
             } else {
                 // If the buffer is invalid we draw directly
                 BufferHelper.unprepare();

@@ -3,9 +3,13 @@ package com.noxcrew.noxesium.feature.ui.render;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.VertexBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.CompiledShaderProgram;
 import net.minecraft.client.renderer.CoreShaders;
+
+import java.util.Objects;
 
 /**
  * Provides various buffer related helper functions.
@@ -16,15 +20,15 @@ public class BufferHelper {
     public static boolean allowBlendChanges = true;
 
     // Store cached values for the buffer rendering state
-    private static boolean configured = false;
+    private static CompiledShaderProgram configured;
     private static boolean blend;
     private static int srcRgb, dstRgb, srcAlpha, dstAlpha;
 
     /**
      * Sets up for rendering buffers.
      */
-    public static void prepare() {
-        if (configured) return;
+    public static CompiledShaderProgram prepare(SharedVertexBuffer sharedBuffer) {
+        if (configured != null) return configured;
 
         // Set the texture and draw the buffer using the render texture
         // We can safely disable and re-enable the depth test because we know
@@ -46,19 +50,26 @@ public class BufferHelper {
         RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
         // Set up the correct shaders and color
-        RenderSystem.setShader(CoreShaders.POSITION_TEX);
+        var shader = Objects.requireNonNull(RenderSystem.setShader(CoreShaders.BLIT_SCREEN), "Blit shader not loaded");
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
+        // Bind the vertex shader
+        sharedBuffer.bind();
 
         // Mark that we are bound
         allowBlendChanges = false;
-        configured = true;
+        configured = shader;
+        return shader;
     }
 
     /**
      * Breaks down after rendering a buffer.
      */
     public static void unprepare() {
-        if (!configured) return;
+        if (configured == null) return;
+
+        // Unbind the shared vertex buffer
+        VertexBuffer.unbind();
 
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
@@ -74,7 +85,7 @@ public class BufferHelper {
         GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
 
         // Mark that we have unbound
-        configured = false;
+        configured = null;
     }
 
     /**
