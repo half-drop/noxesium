@@ -1,4 +1,4 @@
-package com.noxcrew.noxesium.mixin.ui;
+package com.noxcrew.noxesium.mixin.ui.ext;
 
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.LayeredDraw;

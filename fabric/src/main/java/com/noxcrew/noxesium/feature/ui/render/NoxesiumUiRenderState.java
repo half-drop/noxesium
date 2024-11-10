@@ -1,5 +1,6 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
 import net.minecraft.client.DeltaTracker;
@@ -17,11 +18,8 @@ public class NoxesiumUiRenderState implements Closeable {
 
     private ElementBuffer buffer;
 
-    /**
-     * Ticks this render state, triggering requests to the GPU to read back
-     * the contents of dynamic buffers.
-     */
-    public void tick() {
+    public NoxesiumUiRenderState() {
+        RenderSystem.assertOnRenderThread();
 
     }
 
@@ -44,6 +42,9 @@ public class NoxesiumUiRenderState implements Closeable {
                 renderLayer(guiGraphics, deltaTracker, layer);
             }
             guiGraphics.pose().popPose();
+
+            // Run PBO snapshot creation logic
+            buffer.snapshot();
         } finally {
             BufferHelper.unbind(guiGraphics);
         }

@@ -1,7 +1,10 @@
 
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.mojang.blaze3d.buffers.BufferType;
 import com.mojang.blaze3d.buffers.BufferUsage;
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuFence;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -12,8 +15,10 @@ import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.lwjgl.opengl.GL11;
 
 import java.io.Closeable;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -29,7 +34,61 @@ public class ElementBuffer implements Closeable {
     private double screenWidth;
     private double screenHeight;
 
+    /**
+     * We add an extra buffer that stores a PBO which we use to take
+     * snapshots of the current frame.
+     */
+    private GpuBuffer pbo;
+    private GpuFence fence;
+    private byte[] lastSnapshot = null;
+
     private final AtomicBoolean configuring = new AtomicBoolean(false);
+
+    /**
+     * Snapshots the current buffer contents to a PBO.
+     */
+    public void snapshot() {
+        if (pbo == null) return;
+
+        if (fence != null) {
+            // Wait for actual data to be available
+            if (fence.awaitCompletion(0L)) {
+                try (var view = pbo.read()) {
+                    if (view != null) {
+                        var source = view.data();
+                        var newSnapshot = new byte[source.remaining()];
+                        source.get(newSnapshot, 0, newSnapshot.length);
+                        if (lastSnapshot != null) {
+                            if (Arrays.equals(lastSnapshot, newSnapshot)) {
+                                // TODO Slow down the rendering and start re-using the buffer!
+                            }
+                        }
+                        lastSnapshot = newSnapshot;
+                    }
+                }
+                fence = null;
+            }
+        } else {
+            // Read the contents of the buffer to the PBO
+            var window = Minecraft.getInstance().getWindow();
+            var width = window.getWidth();
+            var height = window.getHeight();
+
+            // Bind the PBO to tell the GPU to read the pixels into it
+            pbo.bind();
+            GL11.glReadPixels(
+                0, 0,
+                width, height,
+                GL11.GL_RGBA,
+                GL11.GL_UNSIGNED_BYTE,
+                0
+            );
+
+            // Start waiting for the GPU to return the data
+            fence = new GpuFence();
+            snapshot();
+        }
+    }
 
     /**
      * Binds this buffer to the render target, replacing any previous target.
@@ -76,6 +135,14 @@ public class ElementBuffer implements Closeable {
                         buffer.close();
                         buffer = null;
                     }
+                    if (pbo != null) {
+                        pbo.close();
+                        pbo = null;
+                    }
+
+                    // Create a PBO for snapshots
+                    var pbo = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
+                    pbo.resize(width * height * 4);
 
                     // Create a single texture that stretches the entirety of the buffer
                     var buffer = new VertexBuffer(BufferUsage.STATIC_WRITE);
@@ -98,6 +165,7 @@ public class ElementBuffer implements Closeable {
                     this.screenWidth = screenWidth;
                     this.screenHeight = screenHeight;
                     this.buffer = buffer;
+                    this.pbo = pbo;
                 } finally {
                     configuring.set(false);
                 }
@@ -126,6 +194,14 @@ public class ElementBuffer implements Closeable {
         if (buffer != null) {
             buffer.close();
             buffer = null;
+        }
+        if (pbo != null) {
+            pbo.close();
+            pbo = null;
+        }
+        if (fence != null) {
+            fence.close();
+            fence = null;
         }
         if (target != null) {
             target.destroyBuffers();

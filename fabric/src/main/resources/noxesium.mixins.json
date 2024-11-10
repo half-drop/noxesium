@@ -55,10 +55,11 @@
     "sound.CustomNoxesiumSoundsMixin",
     "ui.CustomDebugHotkeysMixin",
     "ui.GlStateManagerMixin",
-    "ui.GuiExt",
     "ui.GuiMixin",
     "ui.LayeredDrawMixin",
-    "ui.MinecraftMixin"
+    "ui.MinecraftMixin",
+    "ui.ext.GuiExt",
+    "ui.ext.VertexBufferExt"
   ],
   "injectors": {
     "defaultRequire": 1

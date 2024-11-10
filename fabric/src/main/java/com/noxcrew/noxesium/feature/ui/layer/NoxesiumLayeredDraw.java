@@ -36,18 +36,9 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
     }
 
     /**
-     * Ticks the render state to update.
+     * Clears out all cached data.
      */
-    public void tick() {
-        if (state != null) {
-            state.tick();
-        }
-    }
-
-    /**
-     * Called when the display is resized. All cached state should be voided immediately.
-     */
-    public void resizeDisplay() {
+    public void clear() {
         if (state == null) return;
         try {
             // Whenever the display is resized we want to fully reset the render state
