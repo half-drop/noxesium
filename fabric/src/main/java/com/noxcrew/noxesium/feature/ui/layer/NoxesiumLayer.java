@@ -24,7 +24,7 @@ public sealed interface NoxesiumLayer {
         private boolean conditionResult = false;
         private boolean changedRecently = false;
 
-        LayerGroup(List<NoxesiumLayer> layers, BooleanSupplier condition) {
+        public LayerGroup(List<NoxesiumLayer> layers, BooleanSupplier condition) {
             this.layers = layers;
             this.condition = condition;
 
@@ -42,6 +42,13 @@ public sealed interface NoxesiumLayer {
          */
         public List<NoxesiumLayer> layers() {
             return layers;
+        }
+
+        /**
+         * Returns the condition of this group.
+         */
+        public BooleanSupplier condition() {
+            return condition;
         }
 
         /**

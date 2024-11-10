@@ -21,8 +21,6 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 
 import java.io.Closeable;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -99,11 +97,11 @@ public class ElementBuffer implements Closeable {
         // Bind the PBO to tell the GPU to read the pixels into it
         pbo.bind();
         GL11.glReadPixels(
-            0, 0,
-            width, height,
-            GL11.GL_RGBA,
-            GL11.GL_UNSIGNED_BYTE,
-            0
+                0, 0,
+                width, height,
+                GL11.GL_RGBA,
+                GL11.GL_UNSIGNED_BYTE,
+                0
         );
 
         // Start waiting for the GPU to return the data
@@ -168,6 +166,7 @@ public class ElementBuffer implements Closeable {
                     var buffer = new VertexBuffer(BufferUsage.STATIC_WRITE);
                     buffer.bind();
 
+                    // Do not use the main tesselator as it gets cleared at the end of frames.
                     var builder = new BufferBuilder(new ByteBufferBuilder(4 * 6), VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
                     builder.addVertex(0.0f, screenHeight, 0.0f).setUv(0.0f, 0.0f);
                     builder.addVertex(screenWidth, screenHeight, 0.0f).setUv(1.0f, 0.0f);
@@ -176,6 +175,7 @@ public class ElementBuffer implements Closeable {
                     buffer.upload(builder.build());
 
                     if (target == null) {
+                        // This constructor internally runs resize!
                         target = new TextureTarget(width, height, true);
                     } else {
                         target.resize(width, height);

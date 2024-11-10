@@ -1,5 +1,7 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.LayerWithReference;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
@@ -42,7 +44,7 @@ public class ElementBufferGroup implements Closeable {
     private long lastSkippedRender = -1;
     private long nextCheck = -1;
     private long nextRender = -1;
-    private boolean justRenderedBuffer = false;
+    private boolean lastUpdateResult = false;
 
     /**
      * Returns an immutable copy of the layers of this group.
@@ -84,13 +86,19 @@ public class ElementBufferGroup implements Closeable {
      * It is given that the buffer is valid if this is true.
      */
     public boolean shouldUseBuffer() {
-        return buffer.isValid() && (justRenderedBuffer || optimizing);
+        return buffer.isValid() && (lastUpdateResult || optimizing);
     }
 
     /**
      * Updates the current state of this group.
      */
     public boolean update(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        var result = updateInner(nanoTime, guiGraphics, deltaTracker);
+        lastUpdateResult = result;
+        return result;
+    }
+
+    private boolean updateInner(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         // Always start by processing the current buffer
         var frameComparison = buffer.process();
         if (frameComparison.isPresent()) {
@@ -111,10 +119,7 @@ public class ElementBufferGroup implements Closeable {
 
         // Skip the update until we reach the next render time
         var shouldCheck = nextCheck <= nanoTime;
-        if (!shouldCheck && !optimizing) {
-            justRenderedBuffer = false;
-            return false;
-        }
+        if (!shouldCheck && !optimizing) return false;
 
         // Determine if we are at the next render threshold yet, otherwise
         // we wait until we have reached it
@@ -128,7 +133,7 @@ public class ElementBufferGroup implements Closeable {
         // make an exception and re-render the buffer this frame!
         var hasChangedRecently = false;
         for (var layer : layers) {
-            if (layer.group().hasChangedRecently()) {
+            if (layer.group() != null && layer.group().hasChangedRecently()) {
                 hasChangedRecently = true;
                 break;
             }
@@ -137,7 +142,6 @@ public class ElementBufferGroup implements Closeable {
             // Skip the update until we reach the next render time
             if (nextRender > nanoTime) {
                 lastSkippedRender = nanoTime;
-                justRenderedBuffer = false;
                 return false;
             }
 
@@ -166,10 +170,8 @@ public class ElementBufferGroup implements Closeable {
                     nextCheck = nanoTime + (long) Math.floor(((1 / checkFps) * 1000000000));
                 }
             }
-            justRenderedBuffer = true;
             return true;
         }
-        justRenderedBuffer = false;
         return false;
     }
 
