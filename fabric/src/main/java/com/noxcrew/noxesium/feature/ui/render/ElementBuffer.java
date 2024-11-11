@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ElementBuffer implements Closeable {
 
+    private final boolean useDepth;
     private int currentIndex = 0;
     private int validPbos = 0;
     private boolean pboReady = false;
@@ -39,6 +40,10 @@ public class ElementBuffer implements Closeable {
     private GpuFence fence;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
+
+    public ElementBuffer(boolean useDepth) {
+        this.useDepth = useDepth;
+    }
 
     /**
      * Returns whether the buffer is ready for a snapshot.
@@ -163,7 +168,7 @@ public class ElementBuffer implements Closeable {
                     if (target == null) {
                         // This constructor internally runs resize! True indicates that we want
                         // a depth buffer to be created as well.
-                        target = new TextureTarget(width, height, true);
+                        target = new TextureTarget(width, height, useDepth);
                     } else {
                         target.resize(width, height);
                     }
@@ -177,8 +182,8 @@ public class ElementBuffer implements Closeable {
     /**
      * Draws this buffer directly and immediately.
      */
-    protected void draw(CompiledShaderProgram shader, SharedVertexBuffer buffer) {
-        buffer.draw(shader, target.getColorTextureId());
+    public void draw(CompiledShaderProgram shader) {
+        SharedVertexBuffer.draw(shader, target.getColorTextureId());
     }
 
     /**

@@ -25,9 +25,9 @@
     "rules.CustomCreativeReloadMixin",
     "rules.DisableMusicMixin",
     "rules.GuiRulesMixin",
+    "rules.HandItemOverrideAttackFix",
     "rules.HandItemOverrideInventoryMixin",
     "rules.HandItemOverrideRenderMixin",
-    "rules.HandItemOverrideAttackFix",
     "rules.OptionInstanceMixin",
     "rules.SpinAttackCollisionMixin",
     "rules.entity.EndCrystalBeamRendererMixin",
@@ -59,6 +59,7 @@
     "ui.GuiMixin",
     "ui.LayeredDrawMixin",
     "ui.MinecraftMixin",
+    "ui.ScreenRenderHookMixin",
     "ui.ext.GuiExt",
     "ui.ext.VertexBufferExt"
   ],

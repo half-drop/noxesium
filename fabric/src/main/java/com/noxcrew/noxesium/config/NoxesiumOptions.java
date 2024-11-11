@@ -17,7 +17,7 @@ public class NoxesiumOptions {
         OptionInstance.cachedConstantTooltip(Component.translatable("noxesium.options.experimental_patches.tooltip.v2")),
         NoxesiumMod.getInstance().getConfig().hasConfiguredPerformancePatches(),
         (newValue) -> {
-            NoxesiumMod.getInstance().getConfig().enableExperimentalPerformancePatches = newValue;
+            NoxesiumMod.getInstance().getConfig().disableExperimentalPerformancePatches = !newValue;
             NoxesiumMod.getInstance().getConfig().save();
         }
     );
@@ -98,8 +98,8 @@ public class NoxesiumOptions {
         (text, value) -> value == 260
             ? genericValueLabel(text, Component.translatable("options.framerateLimit.max"))
             : genericValueLabel(text, Component.translatable("options.framerate", value)),
-        new OptionInstance.IntRange(1, 52).xmap(it -> it * 5, it -> it / 5),
-        Codec.intRange(5, 260),
+        new OptionInstance.IntRange(1, 26).xmap(it -> it * 10, it -> it / 10),
+        Codec.intRange(10, 260),
         NoxesiumMod.getInstance().getConfig().minUiFramerate,
         (newValue) -> {
             NoxesiumMod.getInstance().getConfig().minUiFramerate = newValue;
@@ -113,8 +113,8 @@ public class NoxesiumOptions {
         (text, value) -> value == 260
             ? genericValueLabel(text, Component.translatable("options.framerateLimit.max"))
             : genericValueLabel(text, Component.translatable("options.framerate", value)),
-        new OptionInstance.IntRange(1, 52).xmap(it -> it * 5, it -> it / 5),
-        Codec.intRange(5, 260),
+        new OptionInstance.IntRange(3, 26).xmap(it -> it * 10, it -> it / 10),
+        Codec.intRange(30, 260),
         NoxesiumMod.getInstance().getConfig().maxUiFramerate,
         (newValue) -> {
             NoxesiumMod.getInstance().getConfig().maxUiFramerate = newValue;

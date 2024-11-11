@@ -28,7 +28,7 @@ public class BufferHelper {
     /**
      * Sets up for rendering buffers.
      */
-    public static CompiledShaderProgram prepare(SharedVertexBuffer sharedBuffer) {
+    public static CompiledShaderProgram prepare() {
         if (configured != null) return configured;
 
         // Set the texture and draw the buffer using the render texture
@@ -58,7 +58,7 @@ public class BufferHelper {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
         // Bind the vertex shader
-        sharedBuffer.bind();
+        SharedVertexBuffer.bind();
 
         // Mark that we are bound
         allowBlendChanges = false;

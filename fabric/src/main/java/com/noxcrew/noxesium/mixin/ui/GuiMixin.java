@@ -7,8 +7,8 @@ import com.noxcrew.noxesium.feature.entity.SpatialInteractionEntityTree;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.CustomMapUiWidget;
 import com.noxcrew.noxesium.feature.ui.layer.LayeredDrawExtension;
-import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
-import com.noxcrew.noxesium.mixin.ui.ext.GuiExt;
+import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
+import com.noxcrew.noxesium.feature.ui.render.screen.NoxesiumScreenRenderState;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -29,7 +29,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * Adds additional render layers for Noxesium.
@@ -86,14 +85,27 @@ public abstract class GuiMixin {
 
         // If the experimental patches are on we draw the current UI frame rates and group layouts
         if (Objects.equals(NoxesiumConfig.experimentalPatchesHotkey, true)) {
-            var state = ((LayeredDrawExtension) ((GuiExt) Minecraft.getInstance().gui).getLayers()).noxesium$get().state();
-            if (state != null) {
-                for (var group : state.groups()) {
-                    var renderFps = group.renderFramerate() >= 260 ? "Unlimited" : group.renderFramerate();
-                    var checkFps = group.updateFramerate();
-                    text.add(Component.literal("§b" + group.layerNames() + ": §f" + renderFps + " / " + checkFps));
+            NoxesiumMod.forEachRenderStateHolder((it) -> {
+                var stateIn = it.get();
+                switch (stateIn) {
+                    case NoxesiumUiRenderState state -> {
+                        for (var group : state.groups()) {
+                            var dynamic = group.dynamic();
+                            var renderFps = dynamic.renderFramerate() >= 260 ? "Unlimited" : dynamic.renderFramerate();
+                            var checkFps = dynamic.updateFramerate();
+                            text.add(Component.literal("§b" + group.layerNames() + ": §f" + renderFps + " / " + checkFps));
+                        }
+                    }
+                    case NoxesiumScreenRenderState state -> {
+                        var dynamic = state.dynamic();
+                        var renderFps = dynamic.renderFramerate() >= 260 ? "Unlimited" : dynamic.renderFramerate();
+                        var checkFps = dynamic.updateFramerate();
+                        text.add(Component.literal("§eScreen: §f" + renderFps + " / " + checkFps));
+                    }
+                    case null, default -> {
+                    }
                 }
-            }
+            });
         }
 
         // Draw all the lines in order
@@ -124,13 +136,13 @@ public abstract class GuiMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     public void onInit(Minecraft minecraft, CallbackInfo ci) {
         noxesium$addRenderLayer("Noxesium Map UI", new CustomMapUiWidget(), () -> NoxesiumMod.getInstance().getConfig().shouldRenderMapsInUi() &&
-            !ServerRules.DISABLE_MAP_UI.getValue());
+                !ServerRules.DISABLE_MAP_UI.getValue());
 
         noxesium$addRenderLayer("Noxesium Text Overlay", this::noxesium$renderTextOverlay, () -> !this.getDebugOverlay().showDebugScreen() &&
-            (NoxesiumMod.getInstance().getConfig().showFpsOverlay ||
-                NoxesiumMod.getInstance().getConfig().showGameTimeOverlay ||
-                NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging ||
-                NoxesiumConfig.experimentalPatchesHotkey != null)
+                (NoxesiumMod.getInstance().getConfig().showFpsOverlay ||
+                        NoxesiumMod.getInstance().getConfig().showGameTimeOverlay ||
+                        NoxesiumMod.getInstance().getConfig().enableQibSystemDebugging ||
+                        NoxesiumConfig.experimentalPatchesHotkey != null)
         );
     }
 }

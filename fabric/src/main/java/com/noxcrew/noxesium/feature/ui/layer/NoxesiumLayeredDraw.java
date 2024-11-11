@@ -3,6 +3,8 @@ package com.noxcrew.noxesium.feature.ui.layer;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.LayerWithReference;
+import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
+import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderStateHolder;
 import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,7 +12,6 @@ import net.minecraft.client.gui.LayeredDraw;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,20 +20,12 @@ import java.util.List;
  * A custom implementation of layered draw that persists groupings
  * of layers to properly be able to distinguish between them.
  */
-public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
+public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderStateHolder<NoxesiumUiRenderState> {
 
     private final List<NoxesiumLayer> layers = new ArrayList<>();
     private final List<NoxesiumLayer.LayerGroup> subgroups = new ArrayList<>();
     private int size;
     private NoxesiumUiRenderState state;
-
-    /**
-     * Returns the current render state.
-     */
-    @Nullable
-    public NoxesiumUiRenderState state() {
-        return state;
-    }
 
     /**
      * Returns an unmodifiable copy of this object's layers.
@@ -62,21 +55,6 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
         // track the size we just want to know if there
         // were new layers added.
         size++;
-    }
-
-    /**
-     * Clears out all cached data.
-     */
-    public void clear() {
-        if (state == null) return;
-        try {
-            // Whenever the display is resized we want to fully reset the render state
-            // so we instantly break down all progress.
-            state.close();
-            state = null;
-        } catch (IOException e) {
-            NoxesiumMod.getInstance().getLogger().error("Failed to break down Noxesium UI render state", e);
-        }
     }
 
     @Override
@@ -157,5 +135,18 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
      */
     public int size() {
         return size;
+    }
+
+    @Override
+    public @Nullable NoxesiumRenderState get() {
+        return state;
+    }
+
+    @Override
+    public void clear() {
+        if (state != null) {
+            state.close();
+            state = null;
+        }
     }
 }

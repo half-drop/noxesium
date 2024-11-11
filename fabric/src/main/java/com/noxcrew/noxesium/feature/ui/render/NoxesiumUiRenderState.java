@@ -1,24 +1,20 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
-import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
+import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Stores the entire render state of the current UI.
  */
-public class NoxesiumUiRenderState implements Closeable {
+public class NoxesiumUiRenderState implements NoxesiumRenderState {
 
     private final List<ElementBufferGroup> groups = new CopyOnWriteArrayList<>();
-    private final SharedVertexBuffer sharedBuffer = new SharedVertexBuffer();
     private int lastSize = 0;
 
     /**
@@ -29,35 +25,20 @@ public class NoxesiumUiRenderState implements Closeable {
     }
 
     /**
-     * Ticks each group to process snapshots.
-     */
-    public void tick() {
-        for (var group : groups) {
-            group.tick();
-        }
-    }
-
-    /**
      * Renders the given layered draw object to the screen.
      */
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
         var nanoTime = System.nanoTime();
 
-        // TODO Also apply optimizations to GameRenderer#this.minecraft.screen.renderWithTooltip!
         // TODO Merge together neighboring buffers that are on the same cycle
 
         // Update the vertex buffer
-        sharedBuffer.create();
+        SharedVertexBuffer.create();
 
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
             lastSize = layeredDraw.size();
-
-            try {
-                resetGroups();
-            } catch (IOException e) {
-                NoxesiumMod.getInstance().getLogger().error("Failed to reset buffer groups", e);
-            }
+            resetGroups();
 
             // Determine all layers ordered and flattened, then
             // split them up into
@@ -65,9 +46,8 @@ public class NoxesiumUiRenderState implements Closeable {
 
             // Start by splitting into 4 partitions
             var chunked = chunked(flattened, flattened.size() / 4);
-            var random = new Random();
             for (var chunk : chunked) {
-                var group = new ElementBufferGroup(random);
+                var group = new ElementBufferGroup();
                 group.addLayers(chunk);
                 groups.add(group);
             }
@@ -82,7 +62,22 @@ public class NoxesiumUiRenderState implements Closeable {
         // we want to unbind the buffer afterwards
         var bound = false;
         for (var group : groups) {
-            if (group.update(nanoTime, guiGraphics, deltaTracker)) {
+            // Determine if the group has recently changed
+            for (var layer : group.layers()) {
+                if (layer.group() != null && layer.group().hasChangedRecently()) {
+                    group.dynamic().redraw();
+                    break;
+                }
+            }
+
+            // Update the dynamic element of the group
+            if (group.dynamic().update(nanoTime, guiGraphics, () -> {
+                for (var layer : group.layers()) {
+                    if (layer.group() == null || layer.group().test()) {
+                        group.renderLayer(guiGraphics, deltaTracker, layer.layer());
+                    }
+                }
+            })) {
                 bound = true;
             }
         }
@@ -92,10 +87,9 @@ public class NoxesiumUiRenderState implements Closeable {
 
         // Draw the groups
         for (var group : groups) {
-            var buffer = group.buffer();
-            if (group.shouldUseBuffer()) {
+            if (group.dynamic().shouldUseBuffer()) {
                 // If the buffer is valid we use it to draw
-                buffer.draw(BufferHelper.prepare(sharedBuffer), sharedBuffer);
+                group.dynamic().buffer().draw(BufferHelper.prepare());
             } else {
                 // If the buffer is invalid we draw directly
                 BufferHelper.unprepare();
@@ -110,7 +104,7 @@ public class NoxesiumUiRenderState implements Closeable {
     /**
      * Destroys all previous groups.
      */
-    private void resetGroups() throws IOException {
+    private void resetGroups() {
         for (var group : groups) {
             group.close();
         }
@@ -118,7 +112,14 @@ public class NoxesiumUiRenderState implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void tick() {
+        for (var group : groups) {
+            group.dynamic().tick();
+        }
+    }
+
+    @Override
+    public void close() {
         resetGroups();
     }
 

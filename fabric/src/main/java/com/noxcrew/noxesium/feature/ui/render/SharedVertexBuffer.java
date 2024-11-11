@@ -17,20 +17,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class SharedVertexBuffer implements Closeable {
 
-    private VertexBuffer buffer;
-    private final AtomicBoolean configuring = new AtomicBoolean(false);
+    private static VertexBuffer buffer;
+    private static final AtomicBoolean configuring = new AtomicBoolean(false);
 
     /**
      * Binds this vertex buffer.
      */
-    public void bind() {
+    public static void bind() {
         buffer.bind();
     }
 
     /**
      * Draws using this buffer.
      */
-    public void draw(CompiledShaderProgram shader, int textureId) {
+    public static void draw(CompiledShaderProgram shader, int textureId) {
         shader.bindSampler("InSampler", textureId);
         buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
     }
@@ -38,7 +38,7 @@ public class SharedVertexBuffer implements Closeable {
     /**
      * Creates the buffer if it does not yet exist.
      */
-    public void create() {
+    public static void create() {
         if (buffer == null) {
             if (configuring.compareAndSet(false, true)) {
                 try {
@@ -61,7 +61,7 @@ public class SharedVertexBuffer implements Closeable {
                     buffer.upload(builder.build());
 
                     // Assign the buffer instance last!
-                    this.buffer = buffer;
+                    SharedVertexBuffer.buffer = buffer;
                 } finally {
                     configuring.set(false);
                 }
