@@ -17,6 +17,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -27,16 +28,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ElementBuffer implements Closeable {
 
-    /**
-     * We add an extra buffer that stores a PBO which we use to take
-     * snapshots of the current frame.
-     */
+    private int validPbos = 0;
     private GpuBuffer pbo;
+    private byte[][] buffers;
     private RenderTarget target;
     private GpuFence fence;
-
-    private byte[] snapshot1 = null;
-    private byte[] snapshot2 = null;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
@@ -44,35 +40,38 @@ public class ElementBuffer implements Closeable {
      * Returns whether the buffer is ready for a snapshot.
      */
     public boolean canSnapshot() {
-        return snapshot1 == null && fence == null;
+        return fence == null && validPbos < 2;
     }
 
     /**
-     * Processes the contents of the PBO if it's available, writes
-     * them to local variables for later processing in the tick method.
+     * Awaits the contents of the PBO being available.
      */
-    public void process() {
-        if (pbo == null) return;
-        if (fence == null) return;
-
+    public void awaitFence() {
         // Wait for actual data to be available
+        if (fence == null || pbo == null || buffers == null) return;
         if (fence.awaitCompletion(0L)) {
+            // Re-bind the current PBO so it stays bound
             pbo.bind();
 
             // Bind the buffer and get its contents
             var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT);
             if (byteBuffer != null) {
                 // Extract the contents and save them
-                var newSnapshot = new byte[byteBuffer.remaining()];
-                byteBuffer.get(newSnapshot, 0, newSnapshot.length);
-                snapshot1 = snapshot2;
-                snapshot2 = newSnapshot;
-
-                // Unbind the buffer after we are done with it
-                GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
-            } else {
-                GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
+                var copy = ByteBuffer.allocateDirect(byteBuffer.remaining());
+                copy.put(byteBuffer);
+                buffers[0] = buffers[1];
+                buffers[1] = copy.array();
             }
+
+            // Unbind the buffer after we are done
+            GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
+
+            // Unbind the PBO so it doesn't get modified afterwards
+            GlStateManager._glBindBuffer(GL30.GL_PIXEL_PACK_BUFFER, 0);
+
+            // Mark down that we've taken an PBO and prevent taking
+            // another snapshot for now.
+            validPbos++;
             fence = null;
         }
     }
@@ -81,8 +80,7 @@ public class ElementBuffer implements Closeable {
      * Snapshots the current buffer contents to a PBO.
      */
     public void snapshot() {
-        if (pbo == null) return;
-        if (fence != null) return;
+        if (fence != null || pbo == null) return;
 
         // Read the contents of the buffer to the PBO
         var window = Minecraft.getInstance().getWindow();
@@ -154,6 +152,9 @@ public class ElementBuffer implements Closeable {
                     }
                     pbo.resize(width * height * 4);
 
+                    // Create a new empty buffers object
+                    buffers = new byte[2][];
+
                     if (target == null) {
                         // This constructor internally runs resize! True indicates that we want
                         // a depth buffer to be created as well.
@@ -183,24 +184,20 @@ public class ElementBuffer implements Closeable {
     }
 
     /**
-     * Returns the first snapshot.
+     * Returns the snapshots that were taken.
      */
-    public byte[] snapshot1() {
-        return snapshot1;
+    public byte[][] snapshots() {
+        return buffers;
     }
 
     /**
-     * Returns the second snapshot.
+     * Marks down that a new PBO should be updated.
      */
-    public byte[] snapshot2() {
-        return snapshot2;
-    }
-
-    /**
-     * Clears out snapshot 1.
-     */
-    public void clearSnapshot() {
-        snapshot1 = null;
+    public void requestNewPBO() {
+        if (buffers != null) {
+            buffers[0] = null;
+        }
+        validPbos--;
     }
 
     @Override

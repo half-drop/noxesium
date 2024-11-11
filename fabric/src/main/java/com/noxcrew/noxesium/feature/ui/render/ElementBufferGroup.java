@@ -116,17 +116,18 @@ public class ElementBufferGroup implements Closeable {
      * Process recently taken snapshots to determine changes.
      */
     public void tick() {
-        var snapshot1 = buffer.snapshot1();
-        if (snapshot1 == null) return;
+        // Process the snapshots
+        var snapshots = buffer.snapshots();
+        if (snapshots == null || snapshots[0] == null || snapshots[1] == null) return;
 
-        if (compare(snapshot1, buffer.snapshot2())) {
+        if (compare(snapshots[0], snapshots[1])) {
             // The frames matched, slow down the rendering!
             renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
         } else {
             // The frames did not match, back to full speed!
             renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
         }
-        buffer.clearSnapshot();
+        buffer.requestNewPBO();
 
         // Determine the next check time
         var nanoTime = System.nanoTime();
@@ -145,8 +146,8 @@ public class ElementBufferGroup implements Closeable {
     }
 
     private boolean updateInner(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-        // Always start by processing the current buffer
-        buffer.process();
+        // Always start by awaiting the GPU fence
+        buffer.awaitFence();
 
         // Determine if we are at the next render threshold yet, otherwise
         // we wait until we have reached it
