@@ -41,6 +41,13 @@ public class ElementBuffer implements Closeable {
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
     /**
+     * Returns whether the buffer is ready for a snapshot.
+     */
+    public boolean canSnapshot() {
+        return snapshot1 == null && fence == null;
+    }
+
+    /**
      * Processes the contents of the PBO if it's available, writes
      * them to local variables for later processing in the tick method.
      */

@@ -91,7 +91,7 @@ public abstract class GuiMixin {
                 for (var group : state.groups()) {
                     var renderFps = group.renderFramerate() >= 260 ? "Unlimited" : group.renderFramerate();
                     var checkFps = group.updateFramerate();
-                    text.add(Component.literal("§" + (group.optimizing() ? "b" : "c") + group.layerNames() + ": §f" + renderFps + " / " + checkFps));
+                    text.add(Component.literal("§b" + group.layerNames() + ": §f" + renderFps + " / " + checkFps));
                 }
             }
         }

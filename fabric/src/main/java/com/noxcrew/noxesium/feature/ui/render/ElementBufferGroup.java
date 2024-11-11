@@ -26,22 +26,15 @@ public class ElementBufferGroup implements Closeable {
     private final List<LayerWithReference> layers = new ArrayList<>();
 
     /**
-     * Stores whether this element should currently be rendered
-     * through the buffer, unless we are running a check.
-     */
-    private boolean optimizing = true;
-
-    /**
      * The current fps at which we check for optimization steps.
      */
-    private double checkFps = 2.0;
+    private double checkFps = NoxesiumMod.getInstance().getConfig().minUiFramerate;
 
     /**
      * The current fps at which we re-render the UI elements.
      */
     private double renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
 
-    private long lastSkippedRender = -1;
     private long nextCheck = -1;
     private long nextRender = -1;
     private boolean lastUpdateResult = false;
@@ -66,13 +59,6 @@ public class ElementBufferGroup implements Closeable {
     }
 
     /**
-     * Returns whether optimizations are currently enabled.
-     */
-    public boolean optimizing() {
-        return optimizing;
-    }
-
-    /**
      * The current frame rate of this group.
      */
     public int renderFramerate() {
@@ -91,7 +77,7 @@ public class ElementBufferGroup implements Closeable {
      * It is given that the buffer is valid if this is true.
      */
     public boolean shouldUseBuffer() {
-        return buffer.isValid() && (lastUpdateResult || optimizing);
+        return buffer.isValid();
     }
 
     /**
@@ -141,6 +127,12 @@ public class ElementBufferGroup implements Closeable {
             renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
         }
         buffer.clearSnapshot();
+
+        // Determine the next check time
+        var nanoTime = System.nanoTime();
+        while (nextCheck <= nanoTime) {
+            nextCheck = nanoTime + (long) Math.floor(((1 / checkFps) * 1000000000));
+        }
     }
 
     /**
@@ -155,16 +147,6 @@ public class ElementBufferGroup implements Closeable {
     private boolean updateInner(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         // Always start by processing the current buffer
         buffer.process();
-
-        // Start by determining if we need to run a buffer check yet, we skip
-        // updates if we are not optimizing and there is no check to run
-        if (nextCheck == -1) {
-            nextCheck = nanoTime;
-        }
-
-        // Skip the update until we reach the next render time
-        var shouldCheck = nextCheck <= nanoTime;
-        if (!shouldCheck && !optimizing) return false;
 
         // Determine if we are at the next render threshold yet, otherwise
         // we wait until we have reached it
@@ -185,10 +167,7 @@ public class ElementBufferGroup implements Closeable {
         }
         if (!hasChangedRecently) {
             // Skip the update until we reach the next render time
-            if (nextRender > nanoTime) {
-                lastSkippedRender = nanoTime;
-                return false;
-            }
+            if (nextRender > nanoTime) return false;
 
             // Set the next render time
             nextRender = nanoTime + (long) Math.floor(((1 / renderFps) * 1000000000));
@@ -207,13 +186,8 @@ public class ElementBufferGroup implements Closeable {
             guiGraphics.flush();
 
             // Run PBO snapshot creation logic only if we want to run a check
-            if (shouldCheck) {
+            if (buffer.canSnapshot() && nextCheck <= nanoTime) {
                 buffer.snapshot();
-
-                // Determine the next check time
-                while (nextCheck <= nanoTime) {
-                    nextCheck = nanoTime + (long) Math.floor(((1 / checkFps) * 1000000000));
-                }
             }
             return true;
         }
