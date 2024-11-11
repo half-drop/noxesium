@@ -28,7 +28,7 @@ public class NoxesiumConfig {
     public boolean showFpsOverlay = false;
     public boolean showGameTimeOverlay = false;
     public boolean enableQibSystemDebugging = false;
-    public boolean enableExperimentalPerformancePatches = false;
+    public boolean disableExperimentalPerformancePatches = false; // On by default now!
     public boolean showGlowingSettings = false;
     public boolean dumpIncomingPackets = false;
     public boolean dumpOutgoingPackets = false;
@@ -42,7 +42,7 @@ public class NoxesiumConfig {
      * Returns whether experimental performance are enabled in the configuration.
      */
     public boolean hasConfiguredPerformancePatches() {
-        return enableExperimentalPerformancePatches;
+        return !disableExperimentalPerformancePatches;
     }
 
     /**
