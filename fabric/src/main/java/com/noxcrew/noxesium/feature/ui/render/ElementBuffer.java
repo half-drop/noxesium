@@ -33,6 +33,7 @@ public class ElementBuffer implements Closeable {
     private byte[][] buffers;
     private RenderTarget target;
     private GpuFence fence;
+    private ByteBuffer pboBuffer, recycledBuffer;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
@@ -54,13 +55,13 @@ public class ElementBuffer implements Closeable {
             pbo.bind();
 
             // Bind the buffer and get its contents
-            var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT);
-            if (byteBuffer != null) {
-                // Extract the contents and save them
-                var copy = ByteBuffer.allocateDirect(byteBuffer.remaining());
-                copy.put(byteBuffer);
+            pboBuffer = GL30.glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT, pboBuffer);
+            if (pboBuffer != null) {
+                // Extract the contents and save them, re-use the same buffer because it's faster
+                recycledBuffer.clear();
+                recycledBuffer.put(pboBuffer);
                 buffers[0] = buffers[1];
-                buffers[1] = copy.array();
+                buffers[1] = recycledBuffer.array();
             }
 
             // Unbind the buffer after we are done
@@ -155,6 +156,9 @@ public class ElementBuffer implements Closeable {
                     // Create a new empty buffers object
                     buffers = new byte[2][];
 
+                    // Create a new re-usable byte buffer for extracting the PBOs
+                    recycledBuffer = ByteBuffer.allocate(pbo.size);
+
                     if (target == null) {
                         // This constructor internally runs resize! True indicates that we want
                         // a depth buffer to be created as well.
@@ -202,6 +206,8 @@ public class ElementBuffer implements Closeable {
 
     @Override
     public void close() {
+        recycledBuffer = null;
+
         if (pbo != null) {
             pbo.close();
             pbo = null;

@@ -2,10 +2,8 @@ package com.noxcrew.noxesium.feature.ui.render;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.CompiledShaderProgram;
 import net.minecraft.client.renderer.CoreShaders;
 
@@ -25,7 +23,7 @@ public class BufferHelper {
     // Store cached values for the buffer rendering state
     private static CompiledShaderProgram configured;
     private static boolean blend;
-    private static int srcRgb, dstRgb, srcAlpha, dstAlpha;
+    private static int srcRgb, dstRgb;
 
     /**
      * Sets up for rendering buffers.
@@ -45,12 +43,15 @@ public class BufferHelper {
         blend = GlStateManager.BLEND.mode.enabled;
         srcRgb = GlStateManager.BLEND.srcRgb;
         dstRgb = GlStateManager.BLEND.dstRgb;
-        srcAlpha = GlStateManager.BLEND.srcAlpha;
-        dstAlpha = GlStateManager.BLEND.dstAlpha;
 
-        // Set up the blending properties
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        // Set up the blending properties (or re-use if possible)
+        if (!blend) {
+            RenderSystem.enableBlend();
+        }
+        var value = GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA.value;
+        if (srcRgb != value || dstRgb != value) {
+            RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+        }
 
         // Set up the correct shaders and color
         var shader = Objects.requireNonNull(RenderSystem.setShader(CoreShaders.BLIT_SCREEN), "Blit shader not loaded");
@@ -85,7 +86,7 @@ public class BufferHelper {
         } else {
             RenderSystem.disableBlend();
         }
-        GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        GlStateManager._blendFunc(srcRgb, dstRgb);
 
         // Mark that we have unbound
         configured = null;

@@ -23,6 +23,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
 
     private final List<NoxesiumLayer> layers = new ArrayList<>();
     private final List<NoxesiumLayer.LayerGroup> subgroups = new ArrayList<>();
+    private int size;
     private NoxesiumUiRenderState state;
 
     /**
@@ -55,6 +56,12 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
         if (layer instanceof NoxesiumLayer.LayerGroup group) {
             subgroups.add(group);
         }
+
+        // We naively assume groups are not edited
+        // after being added so we don't need to actually
+        // track the size we just want to know if there
+        // were new layers added.
+        size++;
     }
 
     /**
@@ -149,27 +156,6 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer {
      * Returns the size of this layered draw.
      */
     public int size() {
-        var total = 0;
-        for (var layer : layers) {
-            switch (layer) {
-                case NoxesiumLayer.Layer ignored -> total++;
-                case NoxesiumLayer.LayerGroup layerGroup -> total += count(layerGroup);
-            }
-        }
-        return total;
-    }
-
-    /**
-     * Returns the size of the given layer group.
-     */
-    private int count(NoxesiumLayer.LayerGroup group) {
-        var total = 0;
-        for (var layer : group.layers()) {
-            switch (layer) {
-                case NoxesiumLayer.Layer ignored -> total++;
-                case NoxesiumLayer.LayerGroup layerGroup -> total += count(layerGroup);
-            }
-        }
-        return total;
+        return size;
     }
 }
