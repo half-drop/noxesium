@@ -19,6 +19,9 @@ public class BufferHelper {
     // Controls whether changes in the OpenGL blending state a currently allowed
     public static boolean allowBlendChanges = true;
 
+    // Whether rebinding the current render target is allowed
+    public static boolean allowRebindingTarget = true;
+
     // Store cached values for the buffer rendering state
     private static CompiledShaderProgram configured;
     private static boolean blend;
@@ -97,6 +100,7 @@ public class BufferHelper {
         // Bind the main render target to replace this target,
         // we do not need to unbind this buffer first as it
         // gets replaced by running bindWrite.
+        allowRebindingTarget = true;
         Minecraft.getInstance().getMainRenderTarget().bindWrite(true);
     }
 }

@@ -8,6 +8,7 @@ import com.mojang.blaze3d.buffers.GpuFence;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.platform.GlUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,6 +18,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -113,13 +115,17 @@ public class ElementBuffer implements Closeable {
         guiGraphics.flush();
 
         // Before binding we want to resize this buffer if necessary
+        BufferHelper.allowRebindingTarget = true;
         resize();
+        BufferHelper.allowRebindingTarget = false;
 
         // If the buffer has been properly created we can bind it
         // and clear it.
         if (isValid()) {
             // Bind the render target for writing
+            BufferHelper.allowRebindingTarget = true;
             target.bindWrite(true);
+            BufferHelper.allowRebindingTarget = false;
 
             // Clear the contents of the render target while keeping it bound
             GlStateManager._clearColor(0, 0, 0, 0);

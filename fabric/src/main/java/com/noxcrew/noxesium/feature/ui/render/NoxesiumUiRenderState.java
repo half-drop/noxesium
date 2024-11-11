@@ -36,7 +36,7 @@ public class NoxesiumUiRenderState implements Closeable {
         // TODO Merge together neighboring buffers that are on the same cycle
 
         // Update the vertex buffer
-        sharedBuffer.resize();
+        sharedBuffer.create();
 
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
