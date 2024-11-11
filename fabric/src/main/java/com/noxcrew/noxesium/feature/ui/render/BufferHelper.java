@@ -23,7 +23,7 @@ public class BufferHelper {
     // Store cached values for the buffer rendering state
     private static CompiledShaderProgram configured;
     private static boolean blend;
-    private static int srcRgb, dstRgb;
+    private static int srcRgb, dstRgb, srcAlpha, dstAlpha;
 
     /**
      * Sets up for rendering buffers.
@@ -43,13 +43,14 @@ public class BufferHelper {
         blend = GlStateManager.BLEND.mode.enabled;
         srcRgb = GlStateManager.BLEND.srcRgb;
         dstRgb = GlStateManager.BLEND.dstRgb;
+        srcAlpha = GlStateManager.BLEND.srcAlpha;
+        dstAlpha = GlStateManager.BLEND.dstAlpha;
 
         // Set up the blending properties (or re-use if possible)
         if (!blend) {
             RenderSystem.enableBlend();
         }
-        var value = GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA.value;
-        if (srcRgb != value || dstRgb != value) {
+        if (srcRgb != GlStateManager.SourceFactor.ONE.value || dstRgb != GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA.value) {
             RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         }
 
@@ -86,7 +87,7 @@ public class BufferHelper {
         } else {
             RenderSystem.disableBlend();
         }
-        GlStateManager._blendFunc(srcRgb, dstRgb);
+        GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
 
         // Mark that we have unbound
         configured = null;
