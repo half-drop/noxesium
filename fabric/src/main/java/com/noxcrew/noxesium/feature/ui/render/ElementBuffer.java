@@ -1,6 +1,7 @@
 
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.google.common.base.Preconditions;
 import com.mojang.blaze3d.buffers.BufferType;
 import com.mojang.blaze3d.buffers.BufferUsage;
 import com.mojang.blaze3d.buffers.GpuBuffer;
@@ -15,6 +16,7 @@ import net.minecraft.client.renderer.CompiledShaderProgram;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
+import org.lwjgl.opengl.GL44;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -28,12 +30,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ElementBuffer implements Closeable {
 
+    private int currentIndex = 0;
     private int validPbos = 0;
-    private GpuBuffer pbo;
-    private byte[][] buffers;
+    private boolean pboReady = false;
+    private GpuBuffer[] pbos;
+    private ByteBuffer[] buffers;
     private RenderTarget target;
     private GpuFence fence;
-    private ByteBuffer pboBuffer, recycledBuffer;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
@@ -49,31 +52,14 @@ public class ElementBuffer implements Closeable {
      */
     public void awaitFence() {
         // Wait for actual data to be available
-        if (fence == null || pbo == null || buffers == null) return;
+        if (fence == null || pbos == null || buffers == null) return;
         if (fence.awaitCompletion(0L)) {
-            // Re-bind the current PBO so it stays bound
-            pbo.bind();
-
-            // Bind the buffer and get its contents
-            pboBuffer = GL30.glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT, pboBuffer);
-            if (pboBuffer != null) {
-                // Extract the contents and save them, re-use the same buffer because it's faster
-                recycledBuffer.clear();
-                recycledBuffer.put(pboBuffer);
-                buffers[0] = buffers[1];
-                buffers[1] = recycledBuffer.array();
-            }
-
-            // Unbind the buffer after we are done
-            GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
-
-            // Unbind the PBO so it doesn't get modified afterwards
-            GlStateManager._glBindBuffer(GL30.GL_PIXEL_PACK_BUFFER, 0);
-
             // Mark down that we've taken an PBO and prevent taking
-            // another snapshot for now.
+            // another snapshot for now and we're ready to have them
+            // compared.
             validPbos++;
             fence = null;
+            pboReady = true;
         }
     }
 
@@ -81,15 +67,19 @@ public class ElementBuffer implements Closeable {
      * Snapshots the current buffer contents to a PBO.
      */
     public void snapshot() {
-        if (fence != null || pbo == null) return;
+        if (fence != null || pbos == null) return;
 
         // Read the contents of the buffer to the PBO
         var window = Minecraft.getInstance().getWindow();
         var width = window.getWidth();
         var height = window.getHeight();
 
+        // Flip which buffer we are drawing into
+        if (currentIndex == 1) currentIndex = 0;
+        else currentIndex = 1;
+
         // Bind the PBO to tell the GPU to read the pixels into it
-        pbo.bind();
+        pbos[currentIndex].bind();
         GL11.glReadPixels(
                 0, 0,
                 width, height,
@@ -148,16 +138,27 @@ public class ElementBuffer implements Closeable {
             if (configuring.compareAndSet(false, true)) {
                 try {
                     // Create the PBO / re-size an existing buffer instance
-                    if (pbo == null) {
-                        pbo = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
+                    if (pbos == null) {
+                        pbos = new GpuBuffer[2];
                     }
-                    pbo.resize(width * height * 4);
+                    if (buffers == null) {
+                        buffers = new ByteBuffer[2];
+                    }
+                    for (var i = 0; i < 2; i++) {
+                        if (pbos[i] == null) {
+                            pbos[i] = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
+                        }
+                        pbos[i].resize(width * height * 4);
 
-                    // Create a new empty buffers object
-                    buffers = new byte[2][];
+                        if (buffers[i] == null) {
+                            // Configure the buffer to have a persistent size so we can keep it bound permanently
+                            var flags = GL30C.GL_MAP_READ_BIT | GL44.GL_MAP_PERSISTENT_BIT | GL44.GL_MAP_COHERENT_BIT;
+                            GL44.glBufferStorage(GL30.GL_PIXEL_PACK_BUFFER, pbos[i].size, flags);
 
-                    // Create a new re-usable byte buffer for extracting the PBOs
-                    recycledBuffer = ByteBuffer.allocate(pbo.size);
+                            // Create a persistent buffer to the PBOs contents
+                            buffers[i] = Preconditions.checkNotNull(GL30.glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbos[i].size, flags));
+                        }
+                    }
 
                     if (target == null) {
                         // This constructor internally runs resize! True indicates that we want
@@ -190,27 +191,27 @@ public class ElementBuffer implements Closeable {
     /**
      * Returns the snapshots that were taken.
      */
-    public byte[][] snapshots() {
-        return buffers;
+    public ByteBuffer[] snapshots() {
+        return pboReady ? buffers : null;
     }
 
     /**
      * Marks down that a new PBO should be updated.
      */
     public void requestNewPBO() {
-        if (buffers != null) {
-            buffers[0] = null;
-        }
+        pboReady = false;
         validPbos--;
     }
 
     @Override
     public void close() {
-        recycledBuffer = null;
+        buffers = null;
 
-        if (pbo != null) {
-            pbo.close();
-            pbo = null;
+        if (pbos != null) {
+            for (var pbo : pbos) {
+                pbo.close();
+            }
+            pbos = null;
         }
         if (fence != null) {
             fence.close();

@@ -64,7 +64,7 @@ public class NoxesiumUiRenderState implements Closeable {
             var flattened = layeredDraw.flatten();
 
             // Start by splitting into 4 partitions
-            var chunked = chunked(flattened, lastSize / 4);
+            var chunked = chunked(flattened, flattened.size() / 4);
             var random = new Random();
             for (var chunk : chunked) {
                 var group = new ElementBufferGroup(random);

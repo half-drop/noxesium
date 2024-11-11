@@ -9,8 +9,8 @@ import net.minecraft.client.gui.LayeredDraw;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -35,9 +35,8 @@ public class ElementBufferGroup implements Closeable {
      */
     private double renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
 
-    private long nextCheck = -1;
+    private long nextCheck;
     private long nextRender = -1;
-    private boolean lastUpdateResult = false;
 
     public ElementBufferGroup(Random random) {
         // Determine a random nano time
@@ -83,33 +82,8 @@ public class ElementBufferGroup implements Closeable {
     /**
      * Compares two frame snapshots.
      */
-    private boolean compare(byte[] first, byte[] second) {
-        // Start with a fast comparison using the intrinsic method
-        if (Arrays.equals(first, second)) return true;
-
-        // Iterate through and find any bytes that mismatch, we allow
-        // a +-10 difference on the alpha value of the color.
-        if (first.length == second.length) {
-            var len = first.length;
-            for (var i = 0; i < len; i++) {
-                if (first[i] == second[i]) continue;
-
-                // If the non-alpha values don't match this will never match!
-                if ((first[i] >>> 8) != (second[i] >>> 8)) return false;
-
-                // Compare the alpha values, we allow up to 5 in difference
-                // as that's what we need to let the camera overlay through
-                var a = first[i] & 0xFF;
-                var b = second[i] & 0xFF;
-                if (Math.abs(a - b) <= 5) continue;
-
-                // These pixels mean it doesn't match!
-                return false;
-            }
-            return true;
-        } else {
-            return false;
-        }
+    private boolean compare(ByteBuffer first, ByteBuffer second) {
+        return first.mismatch(second) == -1;
     }
 
     /**
@@ -118,7 +92,7 @@ public class ElementBufferGroup implements Closeable {
     public void tick() {
         // Process the snapshots
         var snapshots = buffer.snapshots();
-        if (snapshots == null || snapshots[0] == null || snapshots[1] == null) return;
+        if (snapshots == null) return;
 
         if (compare(snapshots[0], snapshots[1])) {
             // The frames matched, slow down the rendering!
@@ -140,12 +114,6 @@ public class ElementBufferGroup implements Closeable {
      * Updates the current state of this group.
      */
     public boolean update(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-        var result = updateInner(nanoTime, guiGraphics, deltaTracker);
-        lastUpdateResult = result;
-        return result;
-    }
-
-    private boolean updateInner(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         // Always start by awaiting the GPU fence
         buffer.awaitFence();
 
