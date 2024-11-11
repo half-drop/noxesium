@@ -9,6 +9,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Stores the entire render state of the current UI.
@@ -24,6 +25,15 @@ public class NoxesiumUiRenderState implements Closeable {
      */
     public List<ElementBufferGroup> groups() {
         return groups;
+    }
+
+    /**
+     * Ticks each group to process snapshots.
+     */
+    public void tick() {
+        for (var group : groups) {
+            group.tick();
+        }
     }
 
     /**
@@ -53,8 +63,9 @@ public class NoxesiumUiRenderState implements Closeable {
 
             // Start by splitting into 4 partitions
             var chunked = chunked(flattened, lastSize / 4);
+            var random = new Random();
             for (var chunk : chunked) {
-                var group = new ElementBufferGroup();
+                var group = new ElementBufferGroup(random);
                 group.addLayers(chunk);
                 groups.add(group);
             }

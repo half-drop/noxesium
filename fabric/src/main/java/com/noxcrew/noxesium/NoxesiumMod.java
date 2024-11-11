@@ -16,6 +16,8 @@ import com.noxcrew.noxesium.feature.rule.ServerRuleModule;
 import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.skull.SkullFontModule;
 import com.noxcrew.noxesium.feature.sounds.NoxesiumSoundModule;
+import com.noxcrew.noxesium.feature.ui.layer.LayeredDrawExtension;
+import com.noxcrew.noxesium.mixin.ui.ext.GuiExt;
 import com.noxcrew.noxesium.network.NoxesiumPacketHandling;
 import com.noxcrew.noxesium.network.NoxesiumPackets;
 import com.noxcrew.noxesium.network.serverbound.ServerboundClientInformationPacket;
@@ -262,6 +264,33 @@ public class NoxesiumMod implements ClientModInitializer {
         };
         rebuildThread.setDaemon(true);
         rebuildThread.start();
+
+        // Also run frame comparisons on another thread
+        var frameComparisonThread = new Thread("Noxesium Frame Comparison Thread") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        var gui = ((GuiExt) Minecraft.getInstance().gui);
+                        if (gui != null) {
+                            var layeredDraw = ((LayeredDrawExtension) gui.getLayers()).noxesium$get();
+                            if (layeredDraw != null) {
+                                var state = layeredDraw.state();
+                                if (state != null) {
+                                    state.tick();
+                                }
+                            }
+                        }
+
+                        Thread.sleep(100);
+                    } catch (InterruptedException ex) {
+                        return;
+                    }
+                }
+            }
+        };
+        frameComparisonThread.setDaemon(true);
+        frameComparisonThread.start();
     }
 
     /**

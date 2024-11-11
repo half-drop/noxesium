@@ -8,7 +8,6 @@ import com.mojang.blaze3d.buffers.GpuFence;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.platform.GlUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,9 +17,6 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 
 import java.io.Closeable;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -38,42 +34,40 @@ public class ElementBuffer implements Closeable {
     private GpuBuffer pbo;
     private RenderTarget target;
     private GpuFence fence;
-    private byte[] lastSnapshot = null;
+
+    private byte[] snapshot1 = null;
+    private byte[] snapshot2 = null;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
     /**
-     * Processes the contents of the PBO if it's available.
+     * Processes the contents of the PBO if it's available, writes
+     * them to local variables for later processing in the tick method.
      */
-    public Optional<Boolean> process() {
-        if (pbo == null) return Optional.empty();
-        if (fence == null) return Optional.empty();
+    public void process() {
+        if (pbo == null) return;
+        if (fence == null) return;
 
         // Wait for actual data to be available
         if (fence.awaitCompletion(0L)) {
-            var result = false;
-
             pbo.bind();
 
             // Bind the buffer and get its contents
             var byteBuffer = GlStateManager._glMapBufferRange(GL30.GL_PIXEL_PACK_BUFFER, 0, pbo.size, GL30C.GL_MAP_READ_BIT);
             if (byteBuffer != null) {
+                // Extract the contents and save them
                 var newSnapshot = new byte[byteBuffer.remaining()];
                 byteBuffer.get(newSnapshot, 0, newSnapshot.length);
+                snapshot1 = snapshot2;
+                snapshot2 = newSnapshot;
 
                 // Unbind the buffer after we are done with it
                 GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
-
-                // Compare the two frames to determine if it is unchanged
-                result = Arrays.equals(lastSnapshot, newSnapshot);
-                lastSnapshot = newSnapshot;
             } else {
                 GlStateManager._glUnmapBuffer(GL30.GL_PIXEL_PACK_BUFFER);
             }
             fence = null;
-            return Optional.of(result);
         }
-        return Optional.empty();
     }
 
     /**
@@ -179,6 +173,27 @@ public class ElementBuffer implements Closeable {
      */
     public boolean isValid() {
         return target != null;
+    }
+
+    /**
+     * Returns the first snapshot.
+     */
+    public byte[] snapshot1() {
+        return snapshot1;
+    }
+
+    /**
+     * Returns the second snapshot.
+     */
+    public byte[] snapshot2() {
+        return snapshot2;
+    }
+
+    /**
+     * Clears out snapshot 1.
+     */
+    public void clearSnapshot() {
+        snapshot1 = null;
     }
 
     @Override

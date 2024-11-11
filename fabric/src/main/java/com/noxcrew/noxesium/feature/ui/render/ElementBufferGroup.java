@@ -10,9 +10,11 @@ import net.minecraft.client.gui.LayeredDraw;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -32,7 +34,7 @@ public class ElementBufferGroup implements Closeable {
     /**
      * The current fps at which we check for optimization steps.
      */
-    private double checkFps = 1.0;
+    private double checkFps = 2.0;
 
     /**
      * The current fps at which we re-render the UI elements.
@@ -43,6 +45,11 @@ public class ElementBufferGroup implements Closeable {
     private long nextCheck = -1;
     private long nextRender = -1;
     private boolean lastUpdateResult = false;
+
+    public ElementBufferGroup(Random random) {
+        // Determine a random nano time
+        nextCheck = System.nanoTime() + (long) Math.floor(((1 / checkFps) * random.nextDouble() * 1000000000));
+    }
 
     /**
      * Returns an immutable copy of the layers of this group.
@@ -88,6 +95,55 @@ public class ElementBufferGroup implements Closeable {
     }
 
     /**
+     * Compares two frame snapshots.
+     */
+    private boolean compare(byte[] first, byte[] second) {
+        // Start with a fast comparison using the intrinsic method
+        if (Arrays.equals(first, second)) return true;
+
+        // Iterate through and find any bytes that mismatch, we allow
+        // a +-10 difference on the alpha value of the color.
+        if (first.length == second.length) {
+            var len = first.length;
+            for (var i = 0; i < len; i++) {
+                if (first[i] == second[i]) continue;
+
+                // If the non-alpha values don't match this will never match!
+                if ((first[i] >>> 8) != (second[i] >>> 8)) return false;
+
+                // Compare the alpha values, we allow up to 5 in difference
+                // as that's what we need to let the camera overlay through
+                var a = first[i] & 0xFF;
+                var b = second[i] & 0xFF;
+                if (Math.abs(a - b) <= 5) continue;
+
+                // These pixels mean it doesn't match!
+                return false;
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Process recently taken snapshots to determine changes.
+     */
+    public void tick() {
+        var snapshot1 = buffer.snapshot1();
+        if (snapshot1 == null) return;
+
+        if (compare(snapshot1, buffer.snapshot2())) {
+            // The frames matched, slow down the rendering!
+            renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
+        } else {
+            // The frames did not match, back to full speed!
+            renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
+        }
+        buffer.clearSnapshot();
+    }
+
+    /**
      * Updates the current state of this group.
      */
     public boolean update(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -98,16 +154,7 @@ public class ElementBufferGroup implements Closeable {
 
     private boolean updateInner(long nanoTime, GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         // Always start by processing the current buffer
-        var frameComparison = buffer.process();
-        if (frameComparison.isPresent()) {
-            if (frameComparison.get()) {
-                // The frames matched, slow down the rendering!
-                renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
-            } else {
-                // The frames did not match, speed up rendering!
-                renderFps = Math.min(NoxesiumMod.getInstance().getConfig().maxUiFramerate, renderFps * 2);
-            }
-        }
+        buffer.process();
 
         // Start by determining if we need to run a buffer check yet, we skip
         // updates if we are not optimizing and there is no check to run
@@ -223,7 +270,7 @@ public class ElementBufferGroup implements Closeable {
         var toSplit = layers.subList(half, total);
 
         removeLayers(toSplit);
-        var newGroup = new ElementBufferGroup();
+        var newGroup = new ElementBufferGroup(new Random());
         newGroup.addLayers(toSplit);
         return newGroup;
     }
