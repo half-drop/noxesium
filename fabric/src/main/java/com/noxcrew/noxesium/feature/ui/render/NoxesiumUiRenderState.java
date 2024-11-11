@@ -51,6 +51,8 @@ public class NoxesiumUiRenderState implements Closeable {
 
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
+            lastSize = layeredDraw.size();
+
             try {
                 resetGroups();
             } catch (IOException e) {
@@ -60,7 +62,6 @@ public class NoxesiumUiRenderState implements Closeable {
             // Determine all layers ordered and flattened, then
             // split them up into
             var flattened = layeredDraw.flatten();
-            lastSize = flattened.size();
 
             // Start by splitting into 4 partitions
             var chunked = chunked(flattened, lastSize / 4);
