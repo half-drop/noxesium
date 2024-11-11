@@ -10,13 +10,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Stores the entire render state of the current UI.
  */
 public class NoxesiumUiRenderState implements Closeable {
 
-    private final List<ElementBufferGroup> groups = new ArrayList<>();
+    private final List<ElementBufferGroup> groups = new CopyOnWriteArrayList<>();
     private final SharedVertexBuffer sharedBuffer = new SharedVertexBuffer();
     private int lastSize = 0;
 

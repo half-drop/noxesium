@@ -87,7 +87,7 @@ public class ElementBuffer implements Closeable {
         GL11.glReadPixels(
                 0, 0,
                 width, height,
-                GL11.GL_RGBA,
+                GL30.GL_BGRA,
                 GL11.GL_UNSIGNED_BYTE,
                 0
         );
