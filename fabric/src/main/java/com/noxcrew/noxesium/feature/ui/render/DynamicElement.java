@@ -21,6 +21,7 @@ public class DynamicElement implements Closeable {
     private boolean needsRedraw = true;
     private long nextCheck;
     private long nextRender = -1;
+    private int failedCheckCount = 0;
 
     /**
      * The current fps at which we check for optimization steps.
@@ -93,9 +94,25 @@ public class DynamicElement implements Closeable {
         if (compare(empty, snapshots[0], snapshots[1])) {
             // The frames matched, slow down the rendering!
             renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
+
+            // Count how often the check succeeded and slot it down by up to 5x
+            failedCheckCount = Math.min(-1, failedCheckCount - 1);
+            if (failedCheckCount <= -10) {
+                checkFps = ((double) NoxesiumMod.getInstance().getConfig().minUiFramerate / Math.min(5, -failedCheckCount / 10));
+            } else {
+                checkFps = NoxesiumMod.getInstance().getConfig().minUiFramerate;
+            }
         } else {
             // The frames did not match, back to full speed!
             renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
+
+            // Count how often the check failed and slow it down by up to 5x
+            failedCheckCount = Math.max(1, failedCheckCount + 1);
+            if (failedCheckCount >= 10) {
+                checkFps = ((double) NoxesiumMod.getInstance().getConfig().minUiFramerate / Math.min(5, failedCheckCount / 10));
+            } else {
+                checkFps = NoxesiumMod.getInstance().getConfig().minUiFramerate;
+            }
         }
         buffer.requestNewPBO();
 
