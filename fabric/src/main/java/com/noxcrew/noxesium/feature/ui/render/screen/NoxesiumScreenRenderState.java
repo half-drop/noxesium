@@ -1,6 +1,5 @@
 package com.noxcrew.noxesium.feature.ui.render.screen;
 
-import com.noxcrew.noxesium.feature.ui.render.BufferHelper;
 import com.noxcrew.noxesium.feature.ui.render.DynamicElement;
 import com.noxcrew.noxesium.feature.ui.render.SharedVertexBuffer;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
@@ -30,9 +29,6 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
     public void render(GuiGraphics guiGraphics, int width, int height, float deltaTime, Screen screen) {
         var nanoTime = System.nanoTime();
 
-        // Update the vertex buffer
-        SharedVertexBuffer.create();
-
         // Try to update the buffer
         if (lastScreen != screen) {
             dynamic.redraw();
@@ -40,20 +36,18 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         }
 
         // Update the buffer and redraw it if necessary
-        if (dynamic.update(nanoTime, guiGraphics, () -> {
-            screen.renderWithTooltip(guiGraphics, width, height, deltaTime);
-        })) {
-            BufferHelper.unbind();
+        if (dynamic.update(nanoTime, guiGraphics, () -> screen.renderWithTooltip(guiGraphics, width, height, deltaTime))) {
+            SharedVertexBuffer.rebindMainRenderTarget();
         }
 
-        // Try to draw the buffer to the screen
-        if (dynamic.shouldUseBuffer()) {
-            // If the buffer is valid we use it to draw
-            BufferHelper.draw(List.of(dynamic.getTextureId()));
-        } else {
-            // If the buffer is invalid we draw directly
+        // If the buffer is invalid we draw directly instead of using it
+        if (!dynamic.isValid()) {
             screen.renderWithTooltip(guiGraphics, width, height, deltaTime);
+            return;
         }
+
+        // If the buffer is valid we use it to draw
+        SharedVertexBuffer.draw(List.of(dynamic.getTextureId()));
     }
 
     @Override

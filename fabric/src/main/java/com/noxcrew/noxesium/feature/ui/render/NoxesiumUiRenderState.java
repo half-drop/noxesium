@@ -32,9 +32,6 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
 
         // TODO Merge together neighboring buffers that are on the same cycle
 
-        // Update the vertex buffer
-        SharedVertexBuffer.create();
-
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
             lastSize = layeredDraw.size();
@@ -62,7 +59,8 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
         // we want to unbind the buffer afterwards
         var bound = false;
         for (var group : groups) {
-            // Determine if the group has recently changed
+            // Determine if the group has recently changed their
+            // visibility state, if so request an immediate redraw!
             for (var layer : group.layers()) {
                 if (layer.group() != null && layer.group().hasChangedRecently()) {
                     group.dynamic().redraw();
@@ -82,26 +80,27 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             }
         }
         if (bound) {
-            BufferHelper.unbind();
+            SharedVertexBuffer.rebindMainRenderTarget();
         }
 
-        // Draw the groups
+        // Draw the groups in order
         var ids = new ArrayList<Integer>();
         for (var group : groups) {
-            if (group.dynamic().shouldUseBuffer()) {
-                // If the buffer is valid we use it to draw
-                ids.add(group.dynamic().getTextureId());
-            } else {
-                // Draw the previous ids, clear the list, then draw directly
-                BufferHelper.draw(ids);
+            // If the buffer is broken we have to early exit and draw
+            // directly before going back to the buffers!
+            if (!group.dynamic().isValid()) {
+                SharedVertexBuffer.draw(ids);
                 ids.clear();
-
                 group.drawDirectly(guiGraphics, deltaTracker);
+                continue;
             }
+
+            // If the buffer is valid we use it to draw
+            ids.add(group.dynamic().getTextureId());
         }
 
         // Call draw on any remaining ids
-        BufferHelper.draw(ids);
+        SharedVertexBuffer.draw(ids);
     }
 
     /**

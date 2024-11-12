@@ -106,25 +106,23 @@ public class ElementBuffer implements Closeable {
         guiGraphics.flush();
 
         // Before binding we want to resize this buffer if necessary
-        BufferHelper.allowRebindingTarget = true;
+        SharedVertexBuffer.allowRebindingTarget = true;
         resize();
-        BufferHelper.allowRebindingTarget = false;
+        SharedVertexBuffer.allowRebindingTarget = false;
 
-        // If the buffer has been properly created we can bind it
-        // and clear it.
-        if (isValid()) {
-            // Bind the render target for writing
-            BufferHelper.allowRebindingTarget = true;
-            target.bindWrite(true);
-            BufferHelper.allowRebindingTarget = false;
+        // If something went wrong we abort!
+        if (!isValid()) return false;
 
-            // Clear the contents of the render target while keeping it bound
-            GlStateManager._clearColor(0, 0, 0, 0);
-            GlStateManager._clearDepth(1.0);
-            GlStateManager._clear(16384 | 256);
-            return true;
-        }
-        return false;
+        // Bind the render target for writing
+        SharedVertexBuffer.allowRebindingTarget = true;
+        target.bindWrite(true);
+        SharedVertexBuffer.allowRebindingTarget = false;
+
+        // Clear the contents of the render target while keeping it bound
+        GlStateManager._clearColor(0, 0, 0, 0);
+        GlStateManager._clearDepth(1.0);
+        GlStateManager._clear(16384 | 256);
+        return true;
     }
 
     /**

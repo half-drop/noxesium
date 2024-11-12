@@ -64,10 +64,9 @@ public class DynamicElement implements Closeable {
     }
 
     /**
-     * Returns whether the buffer should be used to render from.
-     * It is given that the buffer is valid if this is true.
+     * Returns whether the buffer is valid.
      */
-    public boolean shouldUseBuffer() {
+    public boolean isValid() {
         return buffer.isValid();
     }
 
@@ -124,21 +123,20 @@ public class DynamicElement implements Closeable {
         // Set the next render time
         nextRender = nanoTime + (long) Math.floor(((1 / renderFps) * 1000000000));
 
-        // Prepare the buffer to be drawn to
-        if (buffer.bind(guiGraphics)) {
-            // Draw the layers onto the buffer
-            draw.run();
+        // Bind the buffer, abort is something goes wrong
+        if (!buffer.bind(guiGraphics)) return false;
 
-            // Actually render things to this buffer
-            guiGraphics.flush();
+        // Draw the layers onto the buffer
+        draw.run();
 
-            // Run PBO snapshot creation logic only if we want to run a check
-            if (buffer.canSnapshot() && nextCheck <= nanoTime) {
-                buffer.snapshot();
-            }
-            return true;
+        // Actually render things to this buffer
+        guiGraphics.flush();
+
+        // Run PBO snapshot creation logic only if we want to run a check
+        if (buffer.canSnapshot() && nextCheck <= nanoTime) {
+            buffer.snapshot();
         }
-        return false;
+        return true;
     }
 
     @Override

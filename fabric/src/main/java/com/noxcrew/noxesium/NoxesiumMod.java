@@ -5,6 +5,8 @@ import com.mojang.blaze3d.shaders.CompiledShader;
 import com.noxcrew.noxesium.api.protocol.ClientSettings;
 import com.noxcrew.noxesium.api.protocol.ProtocolVersion;
 import com.noxcrew.noxesium.config.NoxesiumConfig;
+import com.noxcrew.noxesium.feature.CustomCoreShaders;
+import com.noxcrew.noxesium.feature.CustomRenderTypes;
 import com.noxcrew.noxesium.feature.TeamGlowHotkeys;
 import com.noxcrew.noxesium.feature.entity.ExtraEntityData;
 import com.noxcrew.noxesium.feature.entity.ExtraEntityDataModule;
@@ -201,9 +203,11 @@ public class NoxesiumMod implements ClientModInitializer {
         // Register all universal messaging channels
         NoxesiumPackets.registerPackets("universal");
 
-        // Trigger registration of all server and entity rules
+        // Trigger registration of all server and entity rules and shaders
         Object ignored = ServerRules.DISABLE_SPIN_ATTACK_COLLISIONS;
         ignored = ExtraEntityData.DISABLE_BUBBLES;
+        ignored = CustomCoreShaders.BLIT_SCREEN_MULTIPLE;
+        ignored = CustomRenderTypes.linesNoDepth();
 
         // Listen to shaders that are loaded and cache them
         ResourceManagerHelper
