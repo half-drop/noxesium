@@ -109,15 +109,17 @@ public sealed interface NoxesiumLayer {
             STANDARD_LAYER_NAMES.put(3, "XP Level");
             STANDARD_LAYER_NAMES.put(4, "Effects");
             STANDARD_LAYER_NAMES.put(5, "Bossbar");
-            STANDARD_LAYER_NAMES.put(6, "Sleep Overlay");
-            STANDARD_LAYER_NAMES.put(7, "Demo Overlay");
-            STANDARD_LAYER_NAMES.put(8, "Debug Overlay");
-            STANDARD_LAYER_NAMES.put(9, "Scoreboard");
-            STANDARD_LAYER_NAMES.put(10, "Actionbar");
-            STANDARD_LAYER_NAMES.put(11, "Title");
-            STANDARD_LAYER_NAMES.put(12, "Chat");
-            STANDARD_LAYER_NAMES.put(13, "Tab List");
-            STANDARD_LAYER_NAMES.put(14, "Subtitles");
+            STANDARD_LAYER_NAMES.put(6, "Demo Overlay");
+            STANDARD_LAYER_NAMES.put(7, "Debug Overlay");
+            STANDARD_LAYER_NAMES.put(8, "Scoreboard");
+            STANDARD_LAYER_NAMES.put(9, "Actionbar");
+            STANDARD_LAYER_NAMES.put(10, "Title");
+            STANDARD_LAYER_NAMES.put(11, "Chat");
+            STANDARD_LAYER_NAMES.put(12, "Tab List");
+            STANDARD_LAYER_NAMES.put(13, "Subtitles");
+
+            // The sleep overlay ends up ordered as 7th but is defined last.
+            STANDARD_LAYER_NAMES.put(14, "Sleep Overlay");
         }
 
         public Layer(LayeredDraw.Layer layer) {

@@ -110,7 +110,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
         var result = new ArrayList<LayerWithReference>();
         for (var layer : layers) {
             switch (layer) {
-                case NoxesiumLayer.Layer single -> result.add(new LayerWithReference(single, null));
+                case NoxesiumLayer.Layer single -> result.add(new LayerWithReference(result.size(), single, null));
                 case NoxesiumLayer.NestedLayers group -> process(group, result);
             }
         }
@@ -123,7 +123,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
     private void process(NoxesiumLayer.NestedLayers target, List<LayerWithReference> list) {
         for (var layer : target.layers()) {
             switch (layer) {
-                case NoxesiumLayer.Layer single -> list.add(new LayerWithReference(single, target));
+                case NoxesiumLayer.Layer single -> list.add(new LayerWithReference(list.size(), single, target));
                 case NoxesiumLayer.NestedLayers group -> process(group, list);
             }
         }

@@ -48,7 +48,7 @@ public class ElementBufferGroup implements Closeable {
     public void drawDirectly(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         for (var layer : layers) {
             if (layer.group() == null || layer.group().test()) {
-                renderLayer(guiGraphics, deltaTracker, layer.layer());
+                renderLayer(guiGraphics, deltaTracker, layer.layer(), layer.index());
             }
         }
     }
@@ -58,6 +58,7 @@ public class ElementBufferGroup implements Closeable {
      */
     public void addLayers(Collection<LayerWithReference> layers) {
         this.layers.addAll(layers);
+        dynamic.redraw();
     }
 
     /**
@@ -65,13 +66,14 @@ public class ElementBufferGroup implements Closeable {
      */
     public void removeLayers(Collection<LayerWithReference> layers) {
         this.layers.removeAll(layers);
+        dynamic.redraw();
     }
 
     /**
-     * Returns whether this group can be split.
+     * Returns whether this group should be split up.
      */
-    public boolean canSplit() {
-        return size() > 1;
+    public boolean shouldSplit() {
+        return size() > 1 && dynamic.isAlwaysChanging();
     }
 
     /**
@@ -89,8 +91,7 @@ public class ElementBufferGroup implements Closeable {
         var total = size();
         if (total < 2) throw new IllegalArgumentException("Cannot split up an un-splittable group");
         var half = (int) Math.ceil(((double) total) / 2.0);
-        var toSplit = layers.subList(half, total);
-
+        var toSplit = new ArrayList<>(layers.subList(half, total));
         removeLayers(toSplit);
         var newGroup = new ElementBufferGroup();
         newGroup.addLayers(toSplit);
@@ -102,16 +103,17 @@ public class ElementBufferGroup implements Closeable {
      */
     public void join(ElementBufferGroup other) {
         addLayers(other.layers);
+        other.close();
     }
 
     /**
      * Renders a given layer.
      */
-    public void renderLayer(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayer.Layer layer) {
+    public void renderLayer(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayer.Layer layer, int index) {
         // Set up the pose for each layer separately so their locations are correct
         // even if other layers are skipped.
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0f, 0f, layer.index() * LayeredDraw.Z_SEPARATION);
+        guiGraphics.pose().translate(0f, 0f, index * LayeredDraw.Z_SEPARATION);
         layer.layer().render(guiGraphics, deltaTracker);
         guiGraphics.pose().popPose();
     }

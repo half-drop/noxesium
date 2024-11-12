@@ -53,6 +53,15 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             group.update();
         }
 
+        // Try to split up or merge together groups
+        var index = 0;
+        while (index < groups.size()) {
+            var group = groups.get(index++);
+            if (group.shouldSplit()) {
+                groups.add(index++, group.split());
+            }
+        }
+
         // Tick the groups, possibly redrawing the buffer contents, if any buffers got drawn to
         // we want to unbind the buffer afterwards
         var bound = false;
@@ -70,7 +79,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             if (group.dynamic().update(nanoTime, guiGraphics, () -> {
                 for (var layer : group.layers()) {
                     if (layer.group() == null || layer.group().test()) {
-                        group.renderLayer(guiGraphics, deltaTracker, layer.layer());
+                        group.renderLayer(guiGraphics, deltaTracker, layer.layer(), layer.index());
                     }
                 }
             })) {

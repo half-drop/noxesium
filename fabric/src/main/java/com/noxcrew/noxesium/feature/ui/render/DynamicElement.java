@@ -83,6 +83,14 @@ public class DynamicElement implements Closeable {
     }
 
     /**
+     * Returns whether this element is always changing. Used to determine
+     * when it should be split up this buffer.
+     */
+    public boolean isAlwaysChanging() {
+        return failedCheckCount >= 50;
+    }
+
+    /**
      * Process recently taken snapshots to determine changes.
      */
     public void tick() {
