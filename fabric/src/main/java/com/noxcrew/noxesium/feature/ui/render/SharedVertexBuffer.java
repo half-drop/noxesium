@@ -92,8 +92,6 @@ public class SharedVertexBuffer implements Closeable {
         var draws = ((samplerCount - 1) / MAX_SAMPLERS) + 1;
         var uniform = Objects.requireNonNull(shader.getUniform("SamplerCount"));
 
-        System.out.println("drawing " + samplerCount + " in " + draws + " batches");
-
         for (int pass = 0; pass < draws; pass++) {
             // Tell the shader how many samplers are valid
             var count = (pass == draws - 1) ? samplerCount % MAX_SAMPLERS : MAX_SAMPLERS;
