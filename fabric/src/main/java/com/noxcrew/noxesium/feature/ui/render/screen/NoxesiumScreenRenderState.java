@@ -41,13 +41,14 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         }
 
         // If the buffer is invalid we draw directly instead of using it
-        if (!dynamic.isValid()) {
+        if (dynamic.isInvalid()) {
             screen.renderWithTooltip(guiGraphics, width, height, deltaTime);
             return;
         }
 
         // If the buffer is valid we use it to draw
-        SharedVertexBuffer.draw(List.of(dynamic.getTextureId()));
+        var texture = dynamic.getTextureId();
+        if (texture != -1) SharedVertexBuffer.draw(List.of(texture));
     }
 
     @Override

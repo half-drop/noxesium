@@ -88,7 +88,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
         for (var group : groups) {
             // If the buffer is broken we have to early exit and draw
             // directly before going back to the buffers!
-            if (!group.dynamic().isValid()) {
+            if (group.dynamic().isInvalid()) {
                 SharedVertexBuffer.draw(ids);
                 ids.clear();
                 group.drawDirectly(guiGraphics, deltaTracker);
@@ -96,7 +96,8 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             }
 
             // If the buffer is valid we use it to draw
-            ids.add(group.dynamic().getTextureId());
+            var id = group.dynamic().getTextureId();
+            if (id != -1) ids.add(id);
         }
 
         // Call draw on any remaining ids

@@ -12,8 +12,12 @@ import java.util.Random;
  */
 public class DynamicElement implements Closeable {
 
+    // Stores whether any elements were drawn.
+    public static boolean elementsWereDrawn = false;
+
     private static final Random random = new Random();
     private final ElementBuffer buffer;
+    private boolean bufferEmpty = false;
     private boolean needsRedraw = true;
     private long nextCheck;
     private long nextRender = -1;
@@ -64,17 +68,17 @@ public class DynamicElement implements Closeable {
     }
 
     /**
-     * Returns whether the buffer is valid.
+     * Returns whether the buffer is invalid.
      */
-    public boolean isValid() {
-        return buffer.isValid();
+    public boolean isInvalid() {
+        return buffer.isInvalid();
     }
 
     /**
      * Returns the texture id of this element.
      */
     public int getTextureId() {
-        return buffer.getTextureId();
+        return bufferEmpty ? -1 : buffer.getTextureId();
     }
 
     /**
@@ -85,7 +89,8 @@ public class DynamicElement implements Closeable {
         var snapshots = buffer.snapshots();
         if (snapshots == null) return;
 
-        if (compare(snapshots[0], snapshots[1])) {
+        var empty = buffer.emptySnapshots();
+        if (compare(empty, snapshots[0], snapshots[1])) {
             // The frames matched, slow down the rendering!
             renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
         } else {
@@ -127,14 +132,18 @@ public class DynamicElement implements Closeable {
         if (!buffer.bind(guiGraphics)) return false;
 
         // Draw the layers onto the buffer
+        elementsWereDrawn = false;
         draw.run();
 
         // Actually render things to this buffer
         guiGraphics.flush();
 
+        // Nothing was drawn, this layer does not contain anything!
+        bufferEmpty = !elementsWereDrawn;
+
         // Run PBO snapshot creation logic only if we want to run a check
         if (buffer.canSnapshot() && nextCheck <= nanoTime) {
-            buffer.snapshot();
+            buffer.snapshot(bufferEmpty);
         }
         return true;
     }
@@ -147,7 +156,13 @@ public class DynamicElement implements Closeable {
     /**
      * Compares two frame snapshots.
      */
-    private boolean compare(ByteBuffer first, ByteBuffer second) {
+    private boolean compare(boolean[] empty, ByteBuffer first, ByteBuffer second) {
+        // If both are empty, they match.
+        if (empty[0] && empty[1]) return true;
+
+        // If one is empty but the other isn't, they don't match.
+        if (empty[0] || empty[1]) return false;
+
         return first.mismatch(second) == -1;
     }
 }
