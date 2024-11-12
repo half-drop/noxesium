@@ -3,6 +3,7 @@ package com.noxcrew.noxesium.mixin.ui;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.render.screen.ScreenRenderingHolder;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.client.renderer.GameRenderer;
@@ -20,7 +21,7 @@ public class ScreenRenderHookMixin {
     public void renderScreen(Screen instance, GuiGraphics guiGraphics, int width, int height, float deltaTime) {
         // If experimental patches are disabled we ignore all custom logic,
         // or if we are not in a GUI menu.
-        if (!(instance instanceof MenuAccess) || NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches()) {
+        if (!(instance instanceof MenuAccess || instance instanceof ChatScreen) || NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches()) {
             // Destroy the state if it exists
             ScreenRenderingHolder.getInstance().clear();
 

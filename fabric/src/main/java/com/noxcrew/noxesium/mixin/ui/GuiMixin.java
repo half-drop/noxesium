@@ -17,6 +17,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Final;
@@ -99,7 +100,8 @@ public abstract class GuiMixin {
                     }
                     case NoxesiumScreenRenderState state -> {
                         // Only show this if we are currently running the screen optimizations
-                        if (Minecraft.getInstance().screen instanceof MenuAccess<?>) {
+                        if (Minecraft.getInstance().screen instanceof MenuAccess<?> ||
+                                Minecraft.getInstance().screen instanceof ChatScreen) {
                             var dynamic = state.dynamic();
                             var renderFps = dynamic.renderFramerate() >= 260 ? "Unlimited" : dynamic.renderFramerate();
                             var checkFps = dynamic.updateFramerate();
