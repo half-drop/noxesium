@@ -7,8 +7,12 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.noxcrew.noxesium.feature.CustomCoreShaders;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 import java.io.Closeable;
 import java.util.List;
@@ -25,11 +29,14 @@ public class SharedVertexBuffer implements Closeable {
     private static final int MAX_SAMPLERS = 8;
     private static final Matrix4f NULL_MATRIX = new Matrix4f();
 
-    // Controls whether changes in the OpenGL blending state a currently allowed
-    public static boolean allowBlendChanges = true;
+    // Sets a hook which controls the current blend state hook
+    public static BlendStateHook blendStateHook = null;
 
     // Whether rebinding the current render target is allowed
     public static boolean allowRebindingTarget = true;
+
+    // Set to true whenever the blend state is being cleared.
+    public static boolean ignoreBlendStateHook = false;
 
     private static VertexBuffer buffer;
     private static final AtomicBoolean configuring = new AtomicBoolean(false);
@@ -60,26 +67,15 @@ public class SharedVertexBuffer implements Closeable {
         RenderSystem.depthMask(false);
 
         // Cache the current blend state so we can return to it
-        var blend = GlStateManager.BLEND.mode.enabled;
-        var srcRgb = GlStateManager.BLEND.srcRgb;
-        var dstRgb = GlStateManager.BLEND.dstRgb;
-        var srcAlpha = GlStateManager.BLEND.srcAlpha;
-        var dstAlpha = GlStateManager.BLEND.dstAlpha;
+        var originalBlendState = BlendState.snapshot();
 
-        // Set up the blending properties (or re-use if possible)
-        if (!blend) {
-            RenderSystem.enableBlend();
-        }
-        if (srcRgb != GlStateManager.SourceFactor.ONE.value || dstRgb != GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA.value) {
-            RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        }
+        // Set up the default blending properties
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
         // Set up the correct shaders and color
         var shader = Objects.requireNonNull(RenderSystem.setShader(CustomCoreShaders.BLIT_SCREEN_MULTIPLE), "Blit shader not loaded");
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-
-        // Prevent further blending changes
-        allowBlendChanges = false;
 
         // Bind the vertex shader
         SharedVertexBuffer.bind();
@@ -118,14 +114,8 @@ public class SharedVertexBuffer implements Closeable {
         RenderSystem.enableDepthTest();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
-        // Restore the original state
-        allowBlendChanges = true;
-        if (blend) {
-            RenderSystem.enableBlend();
-        } else {
-            RenderSystem.disableBlend();
-        }
-        GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        // Restore the old blend state directly
+        originalBlendState.apply();
     }
 
     /**

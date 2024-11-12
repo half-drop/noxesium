@@ -15,27 +15,39 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GlStateManagerMixin {
 
     @Inject(method = "_enableBlend", at = @At("HEAD"), cancellable = true)
-    private static void preventnableBlend(CallbackInfo ci) {
-        if (SharedVertexBuffer.allowBlendChanges) return;
-        ci.cancel();
+    private static void preventEnableBlend(CallbackInfo ci) {
+        var hook = SharedVertexBuffer.blendStateHook;
+        if (hook == null) return;
+        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeState(true)) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "_disableBlend", at = @At("HEAD"), cancellable = true)
     private static void preventDisableBlend(CallbackInfo ci) {
-        if (SharedVertexBuffer.allowBlendChanges) return;
-        ci.cancel();
+        var hook = SharedVertexBuffer.blendStateHook;
+        if (hook == null) return;
+        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeState(false)) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "_blendFunc", at = @At("HEAD"), cancellable = true)
-    private static void preventBlendFunc(CallbackInfo ci) {
-        if (SharedVertexBuffer.allowBlendChanges) return;
-        ci.cancel();
+    private static void preventBlendFunc(int srcRgb, int dstRgb, CallbackInfo ci) {
+        var hook = SharedVertexBuffer.blendStateHook;
+        if (hook == null) return;
+        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeFunc(srcRgb, dstRgb, srcRgb, dstRgb)) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "_blendFuncSeparate", at = @At("HEAD"), cancellable = true)
-    private static void preventBlendFuncSeparate(CallbackInfo ci) {
-        if (SharedVertexBuffer.allowBlendChanges) return;
-        ci.cancel();
+    private static void preventBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha, CallbackInfo ci) {
+        var hook = SharedVertexBuffer.blendStateHook;
+        if (hook == null) return;
+        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeFunc(srcRgb, dstRgb, srcAlpha, dstAlpha)) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "_glBindFramebuffer", at = @At("HEAD"), cancellable = true)

@@ -1,7 +1,10 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
 import com.noxcrew.noxesium.NoxesiumMod;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
 import net.minecraft.client.gui.GuiGraphics;
+import org.lwjgl.opengl.GL11;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -10,7 +13,7 @@ import java.util.Random;
 /**
  * Manages a buffer and its current dynamic fps.
  */
-public class DynamicElement implements Closeable {
+public class DynamicElement implements Closeable, BlendStateHook {
 
     // Stores whether any elements were drawn.
     public static boolean elementsWereDrawn = false;
@@ -22,6 +25,7 @@ public class DynamicElement implements Closeable {
     private long nextCheck;
     private long nextRender = -1;
     private int failedCheckCount = 0;
+    private BlendState blendState;
 
     /**
      * The current fps at which we check for optimization steps.
@@ -142,7 +146,10 @@ public class DynamicElement implements Closeable {
     /**
      * Updates the current state of this element.
      */
-    public boolean update(long nanoTime, GuiGraphics guiGraphics, Runnable draw) {
+    public boolean update(long nanoTime, GuiGraphics guiGraphics, BlendState blendState, Runnable draw) {
+        // Use the blend state while making edits for this object
+        this.blendState = blendState;
+
         // Always start by awaiting the GPU fence
         buffer.awaitFence();
 
@@ -164,9 +171,11 @@ public class DynamicElement implements Closeable {
         // Bind the buffer, abort is something goes wrong
         if (!buffer.bind(guiGraphics)) return false;
 
-        // Draw the layers onto the buffer
+        // Draw the layers onto the buffer while capturing the blending state
         elementsWereDrawn = false;
+        SharedVertexBuffer.blendStateHook = this;
         draw.run();
+        SharedVertexBuffer.blendStateHook = null;
 
         // Actually render things to this buffer
         guiGraphics.flush();
@@ -178,6 +187,71 @@ public class DynamicElement implements Closeable {
         if (buffer.canSnapshot() && nextCheck <= nanoTime) {
             buffer.snapshot(bufferEmpty);
         }
+        return true;
+    }
+
+    /*
+        Default blending is:
+            RenderSystem.enableBlend();
+            RenderSystem.blendFuncSeparate(
+                GlStateManager.SourceFactor.SRC_ALPHA,
+                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                GlStateManager.SourceFactor.ONE,
+                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
+            );
+
+        In vanilla we expect the following blend state changes:
+            Vignette has VIGNETTE_TRANSPARENCY with:
+                RenderSystem.enableBlend();
+                RenderSystem.blendFunc(GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR);
+
+            Crosshair has CROSSHAIR_TRANSPARENCY with:
+                RenderSystem.enableBlend();
+                RenderSystem.blendFuncSeparate(
+                    GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
+                    GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR,
+                    GlStateManager.SourceFactor.ONE,
+                    GlStateManager.DestFactor.ZERO
+                );
+
+            Nausea overlay has NAUSEA_OVERLAY_TRANSPARENCY with:
+                RenderSystem.enableBlend();
+                RenderSystem.blendFuncSeparate(
+                    GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE
+                );
+
+            Hotbar items use entity cutout which has NO_TRANSPARENCY with:
+                RenderSystem.disableBlend();
+                (default blend func is implied but unnecessary)
+
+            Hotbar item glints uses GLINT_TRANSPERNCY with:
+                RenderSystem.enableBlend();
+                RenderSystem.blendFuncSeparate(
+                    GlStateManager.SourceFactor.SRC_COLOR, GlStateManager.DestFactor.ONE, GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE
+                );
+
+            Likely other overlays used.
+
+            Our default blend function for drawing the buffers is:
+            GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
+     */
+
+    @Override
+    public boolean changeState(boolean newValue) {
+        if (newValue == blendState.enabled()) return true;
+        // System.out.println("blend state -> " + newValue);
+        if (!newValue) {
+            // Whenever blending is disabled we trigger a change to the default blend function as well
+            // as vanilla assumes this to be the default when it's given that blending is off
+            changeFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean changeFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        if (srcRgb == blendState.srcRgb() && dstRgb == blendState.dstRgb() && srcAlpha == blendState.srcAlpha() && dstAlpha == blendState.dstAlpha()) return true;
+        // System.out.println("blend func -> " + srcRgb + ", " + dstRgb + ", " + srcAlpha + ", " + dstAlpha);
         return true;
     }
 

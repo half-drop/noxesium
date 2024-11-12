@@ -1,6 +1,7 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -93,6 +94,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
         // Tick the groups, possibly redrawing the buffer contents, if any buffers got drawn to
         // we want to unbind the buffer afterwards
         var bound = false;
+        var state = BlendState.standard();
         for (var group : groups) {
             // Determine if the group has recently changed their
             // visibility state, if so request an immediate redraw!
@@ -104,7 +106,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             }
 
             // Update the dynamic element of the group
-            if (group.dynamic().update(nanoTime, guiGraphics, () -> {
+            if (group.dynamic().update(nanoTime, guiGraphics, state, () -> {
                 for (var layer : group.layers()) {
                     if (layer.group() == null || layer.group().test()) {
                         group.renderLayer(guiGraphics, deltaTracker, layer.layer(), layer.index());

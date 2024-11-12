@@ -39,6 +39,7 @@
     "rules.mouse.MouseHandlerExt",
     "rules.mouse.MouseLockMixin",
     "rules.qib.InteractionExtensionMixin",
+    "rules.qib.JumpHookMixin",
     "rules.qib.LivingEntityExtensionMixin",
     "rules.qib.QibDebugRenderingMixin",
     "rules.qib.QibInteractionMixin",
@@ -59,6 +60,7 @@
     "ui.GuiMixin",
     "ui.LayeredDrawMixin",
     "ui.MinecraftMixin",
+    "ui.RenderStateShardMixin",
     "ui.ScreenRenderHookMixin",
     "ui.ext.GuiExt",
     "ui.ext.VertexBufferExt"
@@ -67,7 +69,5 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "rules.HandItemOverrideAttackFix",
-    "rules.qib.JumpHookMixin"
   ]
 }
