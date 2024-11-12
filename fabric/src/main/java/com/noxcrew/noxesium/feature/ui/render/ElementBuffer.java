@@ -74,20 +74,16 @@ public class ElementBuffer implements Closeable {
     public void snapshot() {
         if (fence != null || pbos == null) return;
 
-        // Read the contents of the buffer to the PBO
-        var window = Minecraft.getInstance().getWindow();
-        var width = window.getWidth();
-        var height = window.getHeight();
-
         // Flip which buffer we are drawing into
         if (currentIndex == 1) currentIndex = 0;
         else currentIndex = 1;
 
-        // Bind the PBO to tell the GPU to read the pixels into it
+        // Bind the PBO to tell the GPU to read the frame buffer's
+        // texture into it directly
         pbos[currentIndex].bind();
-        GL11.glReadPixels(
-                0, 0,
-                width, height,
+        GL11.glGetTexImage(
+                GL11.GL_TEXTURE_2D,
+                0,
                 GL30.GL_BGRA,
                 GL11.GL_UNSIGNED_BYTE,
                 0
@@ -151,7 +147,7 @@ public class ElementBuffer implements Closeable {
                     }
                     for (var i = 0; i < 2; i++) {
                         if (pbos[i] == null) {
-                            pbos[i] = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.DYNAMIC_READ, 0);
+                            pbos[i] = new GpuBuffer(BufferType.PIXEL_PACK, BufferUsage.STREAM_READ, 0);
                         }
                         pbos[i].resize(width * height * 4);
 
