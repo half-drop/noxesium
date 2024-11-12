@@ -86,19 +86,22 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
         }
 
         // Draw the groups
+        var ids = new ArrayList<Integer>();
         for (var group : groups) {
             if (group.dynamic().shouldUseBuffer()) {
                 // If the buffer is valid we use it to draw
-                group.dynamic().buffer().draw(BufferHelper.prepare());
+                ids.add(group.dynamic().getTextureId());
             } else {
-                // If the buffer is invalid we draw directly
-                BufferHelper.unprepare();
+                // Draw the previous ids, clear the list, then draw directly
+                BufferHelper.draw(ids);
+                ids.clear();
+
                 group.drawDirectly(guiGraphics, deltaTracker);
             }
         }
 
-        // Always break down the buffer state after we are done!
-        BufferHelper.unprepare();
+        // Call draw on any remaining ids
+        BufferHelper.draw(ids);
     }
 
     /**

@@ -72,6 +72,13 @@ public class DynamicElement implements Closeable {
     }
 
     /**
+     * Returns the texture id of this element.
+     */
+    public int getTextureId() {
+        return buffer.getTextureId();
+    }
+
+    /**
      * Process recently taken snapshots to determine changes.
      */
     public void tick() {

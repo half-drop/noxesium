@@ -176,10 +176,10 @@ public class ElementBuffer implements Closeable {
     }
 
     /**
-     * Draws this buffer directly and immediately.
+     * Returns the texture id of this element.
      */
-    public void draw(CompiledShaderProgram shader) {
-        SharedVertexBuffer.draw(shader, target.getColorTextureId());
+    public int getTextureId() {
+        return target.getColorTextureId();
     }
 
     /**

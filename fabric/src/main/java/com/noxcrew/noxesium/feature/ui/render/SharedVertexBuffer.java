@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.CompiledShaderProgram;
 
 import java.io.Closeable;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -30,9 +31,13 @@ public class SharedVertexBuffer implements Closeable {
     /**
      * Draws using this buffer.
      */
-    public static void draw(CompiledShaderProgram shader, int textureId) {
-        shader.bindSampler("InSampler", textureId);
-        buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
+    public static void draw(CompiledShaderProgram shader, List<Integer> textureIds) {
+        bind();
+        for (var textureId : textureIds) {
+            shader.bindSampler("InSampler", textureId);
+            buffer.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), RenderSystem.getShader());
+        }
+        VertexBuffer.unbind();
     }
 
     /**

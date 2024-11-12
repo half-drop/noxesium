@@ -4,9 +4,10 @@ import com.noxcrew.noxesium.feature.ui.render.BufferHelper;
 import com.noxcrew.noxesium.feature.ui.render.DynamicElement;
 import com.noxcrew.noxesium.feature.ui.render.SharedVertexBuffer;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+
+import java.util.List;
 
 /**
  * Stores the render state for the on-screen UI element.
@@ -48,8 +49,7 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         // Try to draw the buffer to the screen
         if (dynamic.shouldUseBuffer()) {
             // If the buffer is valid we use it to draw
-            dynamic.buffer().draw(BufferHelper.prepare());
-            BufferHelper.unprepare();
+            BufferHelper.draw(List.of(dynamic.getTextureId()));
         } else {
             // If the buffer is invalid we draw directly
             screen.renderWithTooltip(guiGraphics, width, height, deltaTime);

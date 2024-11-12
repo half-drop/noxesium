@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.CompiledShaderProgram;
 import net.minecraft.client.renderer.CoreShaders;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,16 +21,11 @@ public class BufferHelper {
     // Whether rebinding the current render target is allowed
     public static boolean allowRebindingTarget = true;
 
-    // Store cached values for the buffer rendering state
-    private static CompiledShaderProgram configured;
-    private static boolean blend;
-    private static int srcRgb, dstRgb, srcAlpha, dstAlpha;
-
     /**
-     * Sets up for rendering buffers.
+     * Performs buffer rendering for the given buffer texture ids.
      */
-    public static CompiledShaderProgram prepare() {
-        if (configured != null) return configured;
+    public static void draw(List<Integer> textureIds) {
+        if (textureIds.isEmpty()) return;
 
         // Set the texture and draw the buffer using the render texture
         // We can safely disable and re-enable the depth test because we know
@@ -40,11 +36,11 @@ public class BufferHelper {
         RenderSystem.depthMask(false);
 
         // Cache the current blend state so we can return to it
-        blend = GlStateManager.BLEND.mode.enabled;
-        srcRgb = GlStateManager.BLEND.srcRgb;
-        dstRgb = GlStateManager.BLEND.dstRgb;
-        srcAlpha = GlStateManager.BLEND.srcAlpha;
-        dstAlpha = GlStateManager.BLEND.dstAlpha;
+        var blend = GlStateManager.BLEND.mode.enabled;
+        var srcRgb = GlStateManager.BLEND.srcRgb;
+        var dstRgb = GlStateManager.BLEND.dstRgb;
+        var srcAlpha = GlStateManager.BLEND.srcAlpha;
+        var dstAlpha = GlStateManager.BLEND.dstAlpha;
 
         // Set up the blending properties (or re-use if possible)
         if (!blend) {
@@ -58,23 +54,14 @@ public class BufferHelper {
         var shader = Objects.requireNonNull(RenderSystem.setShader(CoreShaders.BLIT_SCREEN), "Blit shader not loaded");
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
+        // Prevent further blending changes
+        allowBlendChanges = false;
+
         // Bind the vertex shader
         SharedVertexBuffer.bind();
 
-        // Mark that we are bound
-        allowBlendChanges = false;
-        configured = shader;
-        return shader;
-    }
-
-    /**
-     * Breaks down after rendering a buffer.
-     */
-    public static void unprepare() {
-        if (configured == null) return;
-
-        // Unbind the shared vertex buffer
-        VertexBuffer.unbind();
+        // Perform drawing of all buffers at once
+        SharedVertexBuffer.draw(shader, textureIds);
 
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
@@ -88,9 +75,6 @@ public class BufferHelper {
             RenderSystem.disableBlend();
         }
         GlStateManager._blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
-
-        // Mark that we have unbound
-        configured = null;
     }
 
     /**
