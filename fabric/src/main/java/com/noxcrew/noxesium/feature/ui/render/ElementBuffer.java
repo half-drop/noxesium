@@ -211,6 +211,13 @@ public class ElementBuffer implements Closeable {
     }
 
     /**
+     * Returns whether this buffer has at least one valid PBO.
+     */
+    public boolean hasValidPBO() {
+        return validPbos > 0;
+    }
+
+    /**
      * Marks down that a new PBO should be updated.
      */
     public void requestNewPBO() {

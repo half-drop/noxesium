@@ -73,7 +73,22 @@ public class ElementBufferGroup implements Closeable {
      * Returns whether this group should be split up.
      */
     public boolean shouldSplit() {
-        return size() > 1 && dynamic.isAlwaysChanging();
+        return size() > 1 && dynamic.isReady() && dynamic.isOftenChanging();
+    }
+
+    /**
+     * Returns whether this group can merge with another.
+     */
+    public boolean canMerge(ElementBufferGroup other) {
+        // If either needs a redraw we don't edit them as
+        // things might be inaccurate!
+        if (!dynamic.isReady() || !other.dynamic.isReady()) return false;
+
+        // Don't allow creating groups larger than 6
+        if (size() + other.size() > 6) return false;
+
+        // Don't allow merging when render fps is too different
+        return Math.abs(dynamic.renderFramerate() - other.dynamic.renderFramerate()) < 10;
     }
 
     /**
@@ -103,7 +118,6 @@ public class ElementBufferGroup implements Closeable {
      */
     public void join(ElementBufferGroup other) {
         addLayers(other.layers);
-        other.close();
     }
 
     /**

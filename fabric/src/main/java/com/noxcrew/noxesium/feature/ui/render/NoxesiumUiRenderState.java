@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -15,6 +16,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class NoxesiumUiRenderState implements NoxesiumRenderState {
 
     private final List<ElementBufferGroup> groups = new CopyOnWriteArrayList<>();
+    private final Random random = new Random();
+    private final double updateFps = 0.5;
+    private long nextUpdate = -1;
     private int lastSize = 0;
 
     /**
@@ -53,12 +57,36 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             group.update();
         }
 
-        // Try to split up or merge together groups
-        var index = 0;
-        while (index < groups.size()) {
-            var group = groups.get(index++);
-            if (group.shouldSplit()) {
-                groups.add(index++, group.split());
+        // Try to split up or merge together groups, but don't run this too frequently!
+        if (nextUpdate == -1) {
+            nextUpdate = nanoTime;
+        }
+        if (nanoTime >= nextUpdate) {
+            // Schedule when we can next update the groups
+            nextUpdate = nanoTime + (long) Math.floor(((1 / updateFps) * random.nextDouble() * 1000000000));
+
+            // Iterate through all groups and make changes
+            var index = 0;
+            while (index < groups.size()) {
+                var group = groups.get(index++);
+
+                // Try to merge if there are neighboring groups
+                if (index > 2 && index < groups.size()) {
+                    if (group.canMerge(groups.get(index))) {
+                        group.join(groups.get(index));
+                        groups.remove(index).close();
+                        index--;
+                    } else if (groups.get(index - 2).canMerge(group)) {
+                        groups.get(index - 2).join(group);
+                        groups.remove(index - 1).close();
+                        index--;
+                    }
+                }
+
+                // Try to split up the group
+                if (group.shouldSplit()) {
+                    groups.add(index++, group.split());
+                }
             }
         }
 

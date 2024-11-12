@@ -83,11 +83,19 @@ public class DynamicElement implements Closeable {
     }
 
     /**
-     * Returns whether this element is always changing. Used to determine
+     * Returns whether this element is ready to be considered
+     * for group merging/joining.
+     */
+    public boolean isReady() {
+        return !needsRedraw && buffer.hasValidPBO();
+    }
+
+    /**
+     * Returns whether this element is often changing. Used to determine
      * when it should be split up this buffer.
      */
-    public boolean isAlwaysChanging() {
-        return failedCheckCount >= 50;
+    public boolean isOftenChanging() {
+        return failedCheckCount >= 20;
     }
 
     /**
