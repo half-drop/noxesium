@@ -14,34 +14,43 @@ import java.util.function.BooleanSupplier;
 public sealed interface NoxesiumLayer {
 
     /**
-     * Stores a collection of layers.
+     * Stores a collection of nested layers.
      */
-    final class LayerGroup implements NoxesiumLayer {
+    final class NestedLayers implements NoxesiumLayer {
 
-        private final List<NoxesiumLayer> layers;
-        private final List<NoxesiumLayer.LayerGroup> groups;
+        private final NoxesiumLayeredDraw inner;
+        private final List<NestedLayers> groups;
         private final BooleanSupplier condition;
         private boolean conditionResult = false;
         private boolean changedRecently = false;
 
-        public LayerGroup(List<NoxesiumLayer> layers, BooleanSupplier condition) {
-            this.layers = layers;
+        public NestedLayers(NoxesiumLayeredDraw inner, BooleanSupplier condition) {
+            this.inner = inner;
             this.condition = condition;
 
             // Pre-filter which groups are a layer group object
             this.groups = new ArrayList<>();
-            for (var layer : layers) {
-                if (layer instanceof NoxesiumLayer.LayerGroup group) {
+            for (var layer : layers()) {
+                if (layer instanceof NestedLayers group) {
                     this.groups.add(group);
                 }
             }
         }
 
         /**
+         * Returns the inner layered draw object.
+         * We keep this object around as some other mods may add
+         * layers after initialization.
+         */
+        public NoxesiumLayeredDraw inner() {
+            return inner;
+        }
+
+        /**
          * Returns the layers in this group.
          */
         public List<NoxesiumLayer> layers() {
-            return layers;
+            return inner.layers();
         }
 
         /**

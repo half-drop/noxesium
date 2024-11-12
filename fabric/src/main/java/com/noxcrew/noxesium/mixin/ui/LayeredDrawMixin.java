@@ -40,7 +40,7 @@ public class LayeredDrawMixin implements LayeredDrawExtension {
 
     @WrapMethod(method = "add(Lnet/minecraft/client/gui/LayeredDraw;Ljava/util/function/BooleanSupplier;)Lnet/minecraft/client/gui/LayeredDraw;")
     private LayeredDraw addGroup(LayeredDraw layeredDraw, BooleanSupplier booleanSupplier, Operation<LayeredDraw> original) {
-        noxesium$layeredDraw.add(new NoxesiumLayer.LayerGroup(((LayeredDrawExtension) layeredDraw).noxesium$get().layers(), booleanSupplier));
+        noxesium$layeredDraw.add(new NoxesiumLayer.NestedLayers(((LayeredDrawExtension) layeredDraw).noxesium$get(), booleanSupplier));
         return ((LayeredDraw) (Object) this);
     }
 

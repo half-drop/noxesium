@@ -1,11 +1,10 @@
 package com.noxcrew.noxesium.feature.ui.layer;
 
 import com.noxcrew.noxesium.NoxesiumMod;
-import com.noxcrew.noxesium.feature.rule.ServerRules;
 import com.noxcrew.noxesium.feature.ui.LayerWithReference;
+import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderStateHolder;
-import com.noxcrew.noxesium.feature.ui.render.NoxesiumUiRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
@@ -23,8 +22,9 @@ import java.util.List;
 public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderStateHolder<NoxesiumUiRenderState> {
 
     private final List<NoxesiumLayer> layers = new ArrayList<>();
-    private final List<NoxesiumLayer.LayerGroup> subgroups = new ArrayList<>();
-    private int size;
+    private final List<NoxesiumLayer.NestedLayers> subgroups = new ArrayList<>();
+    private final List<NoxesiumLayeredDraw> parents = new ArrayList<>();
+    private int size = -1;
     private NoxesiumUiRenderState state;
 
     /**
@@ -37,7 +37,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
     /**
      * Returns all groups within this layered draw.
      */
-    public List<NoxesiumLayer.LayerGroup> subgroups() {
+    public List<NoxesiumLayer.NestedLayers> subgroups() {
         return subgroups;
     }
 
@@ -46,15 +46,15 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
      */
     public void add(NoxesiumLayer layer) {
         layers.add(layer);
-        if (layer instanceof NoxesiumLayer.LayerGroup group) {
-            subgroups.add(group);
+        if (layer instanceof NoxesiumLayer.NestedLayers nested) {
+            subgroups.add(nested);
+
+            // Add this to the parents of the other so we can update it.
+            nested.inner().parents.add(this);
         }
 
-        // We naively assume groups are not edited
-        // after being added so we don't need to actually
-        // track the size we just want to know if there
-        // were new layers added.
-        size++;
+        // Trigger a recursive update to the parents
+        update();
     }
 
     @Override
@@ -93,7 +93,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
                 single.layer().render(guiGraphics, deltaTracker);
                 guiGraphics.pose().translate(0f, 0f, LayeredDraw.Z_SEPARATION);
             }
-            case NoxesiumLayer.LayerGroup group -> {
+            case NoxesiumLayer.NestedLayers group -> {
                 if (group.condition().getAsBoolean()) {
                     for (var subLayer : group.layers()) {
                         renderLayerDirectly(guiGraphics, deltaTracker, subLayer);
@@ -111,7 +111,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
         for (var layer : layers) {
             switch (layer) {
                 case NoxesiumLayer.Layer single -> result.add(new LayerWithReference(single, null));
-                case NoxesiumLayer.LayerGroup group -> process(group, result);
+                case NoxesiumLayer.NestedLayers group -> process(group, result);
             }
         }
         return result;
@@ -120,11 +120,11 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
     /**
      * Adds the contents of the layer group to the given list.
      */
-    private void process(NoxesiumLayer.LayerGroup target, List<LayerWithReference> list) {
+    private void process(NoxesiumLayer.NestedLayers target, List<LayerWithReference> list) {
         for (var layer : target.layers()) {
             switch (layer) {
                 case NoxesiumLayer.Layer single -> list.add(new LayerWithReference(single, target));
-                case NoxesiumLayer.LayerGroup group -> process(group, list);
+                case NoxesiumLayer.NestedLayers group -> process(group, list);
             }
         }
     }
@@ -133,11 +133,29 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
      * Returns the size of this layered draw.
      */
     public int size() {
+        // When the size is -1 we need to re-determine the value
+        if (size == -1) {
+            for (var layer : layers) {
+                switch (layer) {
+                    case NoxesiumLayer.Layer ignored -> size++;
+                    case NoxesiumLayer.NestedLayers group -> size += group.inner().size();
+                }
+            }
+        }
         return size;
     }
 
+    /**
+     * Updates the size of this object and its parents.
+     */
+    private void update() {
+        size = -1;
+        parents.forEach(NoxesiumLayeredDraw::update);
+    }
+
+    @Nullable
     @Override
-    public @Nullable NoxesiumRenderState get() {
+    public NoxesiumRenderState get() {
         return state;
     }
 

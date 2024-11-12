@@ -7,6 +7,6 @@ import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayer;
  */
 public record LayerWithReference(
         NoxesiumLayer.Layer layer,
-        NoxesiumLayer.LayerGroup group
+        NoxesiumLayer.NestedLayers group
 ) {
 }

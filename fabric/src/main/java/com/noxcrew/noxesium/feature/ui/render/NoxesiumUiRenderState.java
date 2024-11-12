@@ -30,8 +30,6 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker, NoxesiumLayeredDraw layeredDraw) {
         var nanoTime = System.nanoTime();
 
-        // TODO Merge together neighboring buffers that are on the same cycle
-
         // Update which groups exist
         if (lastSize != layeredDraw.size()) {
             lastSize = layeredDraw.size();
