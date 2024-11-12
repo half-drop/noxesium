@@ -46,6 +46,8 @@
   "noxesium.options.min_ui_framerate.tooltip": "Sets the lowest framerate at which UI elements are rendered. This controls how quickly the UI will adapt to controls.",
   "noxesium.options.max_ui_framerate.name": "Max UI Framerate",
   "noxesium.options.max_ui_framerate.tooltip": "Sets the highest framerate at which UI elements are rendered.\n\n§cSetting this to Unlimited has a very high performance impact!",
+  "noxesium.options.optimization_overlay.name": "UI Optimization Overlay",
+  "noxesium.options.optimization_overlay.tooltip": "Adds a small overlay that shows debug information about the UI rendering optimizations.",
 
   "noxesium.options.enum.default": "Ask server",
   "noxesium.options.enum.true": "Always",

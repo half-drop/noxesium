@@ -122,6 +122,16 @@ public class NoxesiumOptions {
         }
     );
 
+    private static final OptionInstance<Boolean> optimizationOverlay = OptionInstance.createBoolean(
+            "noxesium.options.optimization_overlay.name",
+            OptionInstance.cachedConstantTooltip(Component.translatable("noxesium.options.optimization_overlay.tooltip")),
+            NoxesiumMod.getInstance().getConfig().showOptimizationOverlay,
+            (newValue) -> {
+                NoxesiumMod.getInstance().getConfig().showOptimizationOverlay = newValue;
+                NoxesiumMod.getInstance().getConfig().save();
+            }
+    );
+
     public static OptionInstance<Boolean> experimentalPatches() {
         return experimentalPatches;
     }
@@ -160,5 +170,9 @@ public class NoxesiumOptions {
 
     public static OptionInstance<Integer> maxUiFramerate() {
         return maxUiFramerate;
+    }
+
+    public static OptionInstance<Boolean> optimizationOverlay() {
+        return optimizationOverlay;
     }
 }

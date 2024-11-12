@@ -60,8 +60,7 @@ public class NoxesiumLayeredDraw implements LayeredDraw.Layer, NoxesiumRenderSta
     @Override
     public void render(GuiGraphics guiGraphics, @NotNull DeltaTracker deltaTracker) {
         // If experimental patches are disabled we ignore all custom logic.
-        if (NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches() ||
-            ServerRules.DISABLE_UI_OPTIMIZATIONS.getValue()) {
+        if (NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches()) {
             // Destroy the state if it exists
             if (state != null) state = null;
 

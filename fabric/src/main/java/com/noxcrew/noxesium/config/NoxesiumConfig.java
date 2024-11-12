@@ -37,6 +37,7 @@ public class NoxesiumConfig {
     public MapLocation mapUiLocation = MapLocation.TOP;
     public int minUiFramerate = 30;
     public int maxUiFramerate = 120;
+    public boolean showOptimizationOverlay = false;
 
     /**
      * Returns whether experimental performance are enabled in the configuration.
@@ -59,6 +60,8 @@ public class NoxesiumConfig {
      * Whether the experimental performance patches should be used.
      */
     public boolean shouldDisableExperimentalPerformancePatches() {
+        if (ServerRules.DISABLE_UI_OPTIMIZATIONS.getValue()) return true;
+
         if (hasConfiguredPerformancePatches()) {
             if (experimentalPatchesHotkey != null) {
                 return !experimentalPatchesHotkey;

@@ -17,6 +17,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
+import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,7 +28,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -84,7 +84,8 @@ public abstract class GuiMixin {
         }
 
         // If the experimental patches are on we draw the current UI frame rates and group layouts
-        if (Objects.equals(NoxesiumConfig.experimentalPatchesHotkey, true)) {
+        if (NoxesiumMod.getInstance().getConfig().showOptimizationOverlay &&
+                !NoxesiumMod.getInstance().getConfig().shouldDisableExperimentalPerformancePatches()) {
             NoxesiumMod.forEachRenderStateHolder((it) -> {
                 var stateIn = it.get();
                 switch (stateIn) {
@@ -97,10 +98,13 @@ public abstract class GuiMixin {
                         }
                     }
                     case NoxesiumScreenRenderState state -> {
-                        var dynamic = state.dynamic();
-                        var renderFps = dynamic.renderFramerate() >= 260 ? "Unlimited" : dynamic.renderFramerate();
-                        var checkFps = dynamic.updateFramerate();
-                        text.add(Component.literal("§eScreen: §f" + renderFps + " / " + checkFps));
+                        // Only show this if we are currently running the screen optimizations
+                        if (Minecraft.getInstance().screen instanceof MenuAccess<?>) {
+                            var dynamic = state.dynamic();
+                            var renderFps = dynamic.renderFramerate() >= 260 ? "Unlimited" : dynamic.renderFramerate();
+                            var checkFps = dynamic.updateFramerate();
+                            text.add(Component.literal("§eScreen: §f" + renderFps + " / " + checkFps));
+                        }
                     }
                     case null, default -> {
                     }

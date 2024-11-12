@@ -17,18 +17,19 @@ public class NoxesiumSettingsScreen extends OptionsSubScreen {
     @Override
     protected void addOptions() {
         this.list.addSmall(
-            NoxesiumOptions.fpsOverlay(),
-            NoxesiumOptions.gameTimeOverlay(),
-            NoxesiumOptions.dumpIncomingPackets(),
-            NoxesiumOptions.dumpOutgoingPackets(),
-            NoxesiumOptions.extendedPacketLogging(),
-            NoxesiumOptions.playerGlowingKeybinds(),
-            NoxesiumOptions.qibSystemDebugVisuals()
+                NoxesiumOptions.fpsOverlay(),
+                NoxesiumOptions.gameTimeOverlay(),
+                NoxesiumOptions.dumpIncomingPackets(),
+                NoxesiumOptions.dumpOutgoingPackets(),
+                NoxesiumOptions.extendedPacketLogging(),
+                NoxesiumOptions.playerGlowingKeybinds(),
+                NoxesiumOptions.qibSystemDebugVisuals()
         );
         this.list.addBig(NoxesiumOptions.experimentalPatches());
         this.list.addSmall(
-            NoxesiumOptions.minUiFramerate(),
-            NoxesiumOptions.maxUiFramerate()
+                NoxesiumOptions.minUiFramerate(),
+                NoxesiumOptions.maxUiFramerate(),
+                NoxesiumOptions.optimizationOverlay()
         );
     }
 }
