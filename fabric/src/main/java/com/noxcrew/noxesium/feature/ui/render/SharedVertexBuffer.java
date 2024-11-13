@@ -116,7 +116,7 @@ public class SharedVertexBuffer implements Closeable {
 
                 // Change the current shader, bind the texture, and run it
                 shader = Objects.requireNonNull(RenderSystem.setShader(CoreShaders.BLIT_SCREEN), "Regular blit shader not loaded");
-                shader.bindSampler("SamplerIn", texture.textureId());
+                shader.bindSampler("InSampler", texture.textureId());
                 buffer.drawWithShader(NULL_MATRIX, NULL_MATRIX, shader);
 
                 // Set it back to the regular blending function

@@ -280,6 +280,11 @@ public class DynamicElement implements Closeable, BlendStateHook {
         // If we are currently in a buffer with any custom blend
         // state we go back to a normal buffer!
         if (getBuffer(bufferIndex).getBlendState() != null && isNormal) {
+            // Re-enable blending and let it go through
+            SharedVertexBuffer.ignoreBlendStateHook = true;
+            GlStateManager._enableBlend();
+            SharedVertexBuffer.ignoreBlendStateHook = false;
+
             var buffer = getBuffer(elementsWereDrawn ? ++bufferIndex : bufferIndex);
             buffer.bind(guiGraphics);
             buffer.updateBlendState(null);
@@ -299,9 +304,11 @@ public class DynamicElement implements Closeable, BlendStateHook {
         if (elementsWereDrawn) allBuffersEmpty = false;
         elementsWereDrawn = false;
 
-        // Change the actual blending state to one that just copies directly to the buffer!
+        // Change the actual blending by disabling it completely which is slightly faster
+        // than using a different blending function that just copies it directly (which is
+        // what we want, we want to do the blending later)
         SharedVertexBuffer.ignoreBlendStateHook = true;
-        GlStateManager._blendFunc(GL14.GL_ONE, GL14.GL_ZERO);
+        GlStateManager._disableBlend();
         SharedVertexBuffer.ignoreBlendStateHook = false;
         return true;
     }
