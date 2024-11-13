@@ -61,6 +61,19 @@ public class BlendState {
         return state;
     }
 
+    /**
+     * Creates a new blend state from the given input.
+     */
+    public static BlendState from(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        var state = new BlendState();
+        state.blend = true;
+        state.srcRgb = srcRgb;
+        state.dstRgb = dstRgb;
+        state.srcAlpha = srcAlpha;
+        state.dstAlpha = dstAlpha;
+        return state;
+    }
+
     private boolean blend;
     private int srcRgb, dstRgb, srcAlpha, dstAlpha;
 
@@ -82,5 +95,16 @@ public class BlendState {
      */
     public boolean matches(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         return srcRgb == this.srcRgb && dstRgb == this.dstRgb && srcAlpha == this.srcAlpha && dstAlpha == this.dstAlpha;
+    }
+
+    @Override
+    public String toString() {
+        return "BlendState[" +
+                "blend=" + blend +
+                ", srcRgb=" + srcRgb +
+                ", dstRgb=" + dstRgb +
+                ", srcAlpha=" + srcAlpha +
+                ", dstAlpha=" + dstAlpha +
+                ']';
     }
 }

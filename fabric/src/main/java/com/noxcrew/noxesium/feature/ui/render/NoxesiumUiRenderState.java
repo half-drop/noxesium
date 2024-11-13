@@ -1,5 +1,6 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.noxcrew.noxesium.feature.ui.BufferHelper;
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
 import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
@@ -93,7 +94,6 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
 
         // Tick the groups, possibly redrawing the buffer contents, if any buffers got drawn to
         // we want to unbind the buffer afterwards
-        var bound = false;
         for (var group : groups) {
             // Determine if the group has recently changed their
             // visibility state, if so request an immediate redraw!
@@ -105,19 +105,17 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             }
 
             // Update the dynamic element of the group
-            if (group.dynamic().update(nanoTime, guiGraphics, () -> {
+            group.dynamic().update(nanoTime, guiGraphics, () -> {
                 for (var layer : group.layers()) {
                     if (layer.group() == null || layer.group().test()) {
                         group.renderLayer(guiGraphics, deltaTracker, layer.layer(), layer.index());
                     }
                 }
-            })) {
-                bound = true;
-            }
+            });
         }
-        if (bound) {
-            SharedVertexBuffer.rebindMainRenderTarget();
-        }
+
+        // Unbind the frame buffers
+        BufferHelper.unbind();
 
         // Draw the groups in order
         var ids = new ArrayList<BufferData>();

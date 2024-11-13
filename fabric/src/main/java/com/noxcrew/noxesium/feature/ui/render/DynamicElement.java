@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL14;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -25,12 +26,15 @@ public class DynamicElement implements Closeable, BlendStateHook {
     public static final BlendState GLINT_BLEND_STATE = BlendState.glint();
 
     private static final Random random = new Random();
-    private final ElementBuffer buffer;
+    private final List<ElementBuffer> buffers = new ArrayList<>();
     private boolean bufferEmpty = false;
     private boolean needsRedraw = true;
+    private boolean allBuffersEmpty = true;
     private long nextCheck;
     private long nextRender = -1;
     private int failedCheckCount = 0;
+    private int bufferIndex = 0;
+    private GuiGraphics guiGraphics;
 
     /**
      * The current fps at which we check for optimization steps.
@@ -42,18 +46,12 @@ public class DynamicElement implements Closeable, BlendStateHook {
      */
     private double renderFps = NoxesiumMod.getInstance().getConfig().maxUiFramerate;
 
-    public DynamicElement(boolean useDepth) {
-        buffer = new ElementBuffer(useDepth);
-
+    public DynamicElement() {
         // Determine a random nano time
         nextCheck = System.nanoTime() + (long) Math.floor(((1 / checkFps) * random.nextDouble() * 1000000000));
-    }
 
-    /**
-     * Returns the internal buffer of this element.
-     */
-    public ElementBuffer buffer() {
-        return buffer;
+        // Create a first buffer
+        buffers.add(new ElementBuffer());
     }
 
     /**
@@ -78,10 +76,16 @@ public class DynamicElement implements Closeable, BlendStateHook {
     }
 
     /**
-     * Returns whether the buffer is invalid.
+     * Returns whether any buffer is invalid.
      */
     public boolean isInvalid() {
-        return buffer.isInvalid();
+        // If any buffer is invalid we return true!
+        for (var buffer : buffers) {
+            if (buffer.isInvalid()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -89,7 +93,10 @@ public class DynamicElement implements Closeable, BlendStateHook {
      */
     public void submitTextureIds(List<BufferData> buffers) {
         if (bufferEmpty) return;
-        buffers.add(new BufferData(buffer.getTextureId(), null));
+        for (var buffer : this.buffers) {
+            if (buffer.isInvalid()) continue;
+            buffers.add(new BufferData(buffer.getTextureId(), buffer.getBlendState()));
+        }
     }
 
     /**
@@ -97,7 +104,13 @@ public class DynamicElement implements Closeable, BlendStateHook {
      * for group merging/joining.
      */
     public boolean isReady() {
-        return !needsRedraw && buffer.hasValidPBO();
+        if (needsRedraw) return false;
+        for (var buffer : buffers) {
+            if (!buffer.hasValidPBO()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -112,12 +125,21 @@ public class DynamicElement implements Closeable, BlendStateHook {
      * Process recently taken snapshots to determine changes.
      */
     public void tick() {
-        // Process the snapshots
-        var snapshots = buffer.snapshots();
-        if (snapshots == null) return;
+        // Determine if all buffers are the same,
+        // return the entire method if any buffer is not ready.
+        var verdict = true;
+        for (var buffer : buffers) {
+            // Process the snapshots
+            var snapshots = buffer.snapshots();
+            if (snapshots == null) return;
 
-        var empty = buffer.emptySnapshots();
-        if (compare(empty, snapshots[0], snapshots[1])) {
+            var empty = buffer.emptySnapshots();
+            if (!compare(empty, snapshots[0], snapshots[1])) {
+                verdict = false;
+            }
+        }
+
+        if (verdict) {
             // The frames matched, slow down the rendering!
             renderFps = Math.max(NoxesiumMod.getInstance().getConfig().minUiFramerate, renderFps / 2);
 
@@ -140,7 +162,11 @@ public class DynamicElement implements Closeable, BlendStateHook {
                 checkFps = NoxesiumMod.getInstance().getConfig().minUiFramerate;
             }
         }
-        buffer.requestNewPBO();
+
+        // Request new PBO's from all buffers
+        for (var buffer : buffers) {
+            buffer.requestNewPBO();
+        }
 
         // Determine the next check time
         var nanoTime = System.nanoTime();
@@ -154,7 +180,9 @@ public class DynamicElement implements Closeable, BlendStateHook {
      */
     public boolean update(long nanoTime, GuiGraphics guiGraphics, Runnable draw) {
         // Always start by awaiting the GPU fence
-        buffer.awaitFence();
+        for (var buffer : buffers) {
+            buffer.awaitFence();
+        }
 
         // Determine if we are at the next render threshold yet, otherwise
         // we wait until we have reached it
@@ -171,11 +199,13 @@ public class DynamicElement implements Closeable, BlendStateHook {
         // Set the next render time
         nextRender = nanoTime + (long) Math.floor(((1 / renderFps) * 1000000000));
 
-        // Bind the buffer, abort is something goes wrong
-        if (!buffer.bind(guiGraphics)) return false;
+        // Bind the first buffer, abort is something goes wrong
+        this.guiGraphics = guiGraphics;
+        if (!getBuffer(bufferIndex = 0).bind(guiGraphics)) return false;
 
         // Draw the layers onto the buffer while capturing the blending state
         elementsWereDrawn = false;
+        allBuffersEmpty = true;
         SharedVertexBuffer.blendStateHook = this;
         draw.run();
 
@@ -184,13 +214,32 @@ public class DynamicElement implements Closeable, BlendStateHook {
         SharedVertexBuffer.blendStateHook = null;
 
         // Nothing was drawn, this layer does not contain anything!
-        bufferEmpty = !elementsWereDrawn;
+        bufferEmpty = !elementsWereDrawn && allBuffersEmpty;
 
         // Run PBO snapshot creation logic only if we want to run a check
-        if (buffer.canSnapshot() && nextCheck <= nanoTime) {
-            buffer.snapshot(bufferEmpty);
+        if (nextCheck <= nanoTime) {
+            for (var buffer : buffers) {
+                if (buffer.canSnapshot()) {
+                    buffer.snapshot(bufferEmpty);
+                }
+            }
         }
         return true;
+    }
+
+    /**
+     * Returns the buffer with the given index.
+     */
+    private ElementBuffer getBuffer(int index) {
+        if (index < buffers.size()) {
+            return buffers.get(index);
+        }
+        if (index == buffers.size()) {
+            var newBuffer = new ElementBuffer();
+            buffers.add(newBuffer);
+            return newBuffer;
+        }
+        throw new IllegalArgumentException("Cannot get a buffer at an invalid index");
     }
 
     @Override
@@ -223,21 +272,46 @@ public class DynamicElement implements Closeable, BlendStateHook {
 
     @Override
     public boolean changeFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        // Ignore any changes that do not actually change from the default blend state, or
-        // if they are specific types of blend states that are permitted.
-        if (DEFAULT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha) ||
+        var isNormal = DEFAULT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha) ||
                 // We allow glint states as this is one that specifically applies edits to an existing
                 // item that was just rendered in the same buffer.
-                GLINT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha)) return false;
+                GLINT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha);
 
-        // TODO Split the buffer!
-        // System.out.println("Layer: " + layer + "Changing to " + srcRgb + ", " + dstRgb + ", " + srcAlpha + ", " + dstAlpha);
-        return false;
+        // If we are currently in a buffer with any custom blend
+        // state we go back to a normal buffer!
+        if (getBuffer(bufferIndex).getBlendState() != null && isNormal) {
+            var buffer = getBuffer(elementsWereDrawn ? ++bufferIndex : bufferIndex);
+            buffer.bind(guiGraphics);
+            buffer.updateBlendState(null);
+            if (elementsWereDrawn) allBuffersEmpty = false;
+            elementsWereDrawn = false;
+            return false;
+        }
+
+        // Ignore any changes that do not actually change from the default blend state, or
+        // if they are specific types of blend states that are permitted.
+        if (isNormal) return false;
+
+        // Update the buffer to the next one
+        var buffer = getBuffer(elementsWereDrawn ? ++bufferIndex : bufferIndex);
+        buffer.bind(guiGraphics);
+        buffer.updateBlendState(BlendState.from(srcRgb, dstRgb, srcAlpha, dstAlpha));
+        if (elementsWereDrawn) allBuffersEmpty = false;
+        elementsWereDrawn = false;
+
+        // Change the actual blending state to one that just copies directly to the buffer!
+        SharedVertexBuffer.ignoreBlendStateHook = true;
+        GlStateManager._blendFunc(GL14.GL_ONE, GL14.GL_ZERO);
+        SharedVertexBuffer.ignoreBlendStateHook = false;
+        return true;
     }
 
     @Override
     public void close() {
-        buffer.close();
+        for (var buffer : buffers) {
+            buffer.close();
+        }
+        buffers.clear();
     }
 
     /**

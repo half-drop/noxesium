@@ -1,5 +1,6 @@
 package com.noxcrew.noxesium.feature.ui.render.screen;
 
+import com.noxcrew.noxesium.feature.ui.BufferHelper;
 import com.noxcrew.noxesium.feature.ui.render.DynamicElement;
 import com.noxcrew.noxesium.feature.ui.render.SharedVertexBuffer;
 import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
@@ -16,7 +17,7 @@ import java.util.List;
 public class NoxesiumScreenRenderState implements NoxesiumRenderState {
 
     private Screen lastScreen;
-    private final DynamicElement dynamic = new DynamicElement(true);
+    private final DynamicElement dynamic = new DynamicElement();
 
     /**
      * Returns the dynamic element used for rendering the screen.
@@ -38,9 +39,8 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         }
 
         // Update the buffer and redraw it if necessary
-        if (dynamic.update(nanoTime, guiGraphics, () -> screen.renderWithTooltip(guiGraphics, width, height, deltaTime))) {
-            SharedVertexBuffer.rebindMainRenderTarget();
-        }
+        dynamic.update(nanoTime, guiGraphics, () -> screen.renderWithTooltip(guiGraphics, width, height, deltaTime));
+        BufferHelper.unbind();
 
         // If the buffer is invalid we draw directly instead of using it
         if (dynamic.isInvalid()) {

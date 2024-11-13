@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  */
 public class ElementBufferGroup implements Closeable {
 
-    private final DynamicElement dynamic = new DynamicElement(true);
+    private final DynamicElement dynamic = new DynamicElement();
     private final List<LayerWithReference> layers = new ArrayList<>();
 
     /**
@@ -33,13 +33,6 @@ public class ElementBufferGroup implements Closeable {
      */
     public List<LayerWithReference> layers() {
         return Collections.unmodifiableList(layers);
-    }
-
-    /**
-     * Returns the wrapped buffer of this group.
-     */
-    public ElementBuffer buffer() {
-        return dynamic.buffer();
     }
 
     /**

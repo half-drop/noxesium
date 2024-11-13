@@ -191,10 +191,6 @@ public class SharedVertexBuffer implements Closeable {
     public static void rebindMainRenderTarget() {
         RenderSystem.assertOnRenderThread();
 
-        // Reset the blending state
-        RenderSystem.disableBlend();
-        RenderSystem.defaultBlendFunc();
-
         // Bind the main render target to replace this target,
         // we do not need to unbind this buffer first as it
         // gets replaced by running bindWrite.

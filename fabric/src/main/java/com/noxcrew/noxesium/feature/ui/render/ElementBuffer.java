@@ -10,10 +10,12 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.noxcrew.noxesium.feature.ui.BufferHelper;
+import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL44;
@@ -30,7 +32,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ElementBuffer implements Closeable {
 
-    private final boolean useDepth;
     private int currentIndex = 0;
     private int validPbos = 0;
     private boolean pboReady;
@@ -39,11 +40,26 @@ public class ElementBuffer implements Closeable {
     private ByteBuffer[] buffers;
     private RenderTarget target;
     private GpuFence fence;
+    private BlendState blendState;
 
     private final AtomicBoolean configuring = new AtomicBoolean(false);
 
-    public ElementBuffer(boolean useDepth) {
-        this.useDepth = useDepth;
+    public ElementBuffer() {
+    }
+
+    /**
+     * Updates the blend state associated with this buffer.
+     */
+    public void updateBlendState(@Nullable BlendState blendState) {
+        this.blendState = blendState;
+    }
+
+    /**
+     * Returns the associated blend state of the this buffer.
+     */
+    @Nullable
+    public BlendState getBlendState() {
+        return blendState;
     }
 
     /**
@@ -112,8 +128,8 @@ public class ElementBuffer implements Closeable {
     public boolean bind(GuiGraphics guiGraphics) {
         RenderSystem.assertOnRenderThread();
 
-        // Flush the gui graphics to finish drawing to whatever it was on
-        guiGraphics.flush();
+        // Bind various things if this is the first frame buffer we are switching into
+        BufferHelper.bind(guiGraphics);
 
         // Before binding we want to resize this buffer if necessary
         SharedVertexBuffer.allowRebindingTarget = true;
@@ -127,12 +143,6 @@ public class ElementBuffer implements Closeable {
         SharedVertexBuffer.allowRebindingTarget = true;
         target.bindWrite(true);
         SharedVertexBuffer.allowRebindingTarget = false;
-
-        // Prepare a correct constant blending color
-        GL14.glBlendColor(1f, 1f, 1f, 1f);
-
-        // Pre-enable the blending state
-        DynamicElement.DEFAULT_BLEND_STATE.apply();
 
         // Clear the contents of the render target while keeping it bound
         GlStateManager._clearColor(0, 0, 0, 0);
@@ -178,7 +188,7 @@ public class ElementBuffer implements Closeable {
                     if (target == null) {
                         // This constructor internally runs resize! True indicates that we want
                         // a depth buffer to be created as well.
-                        target = new TextureTarget(width, height, useDepth);
+                        target = new TextureTarget(width, height, true);
                     } else {
                         target.resize(width, height);
                     }
