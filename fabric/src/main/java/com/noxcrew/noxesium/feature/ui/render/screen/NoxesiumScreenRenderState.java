@@ -2,10 +2,12 @@ package com.noxcrew.noxesium.feature.ui.render.screen;
 
 import com.noxcrew.noxesium.feature.ui.render.DynamicElement;
 import com.noxcrew.noxesium.feature.ui.render.SharedVertexBuffer;
+import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -47,8 +49,9 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         }
 
         // If the buffer is valid we use it to draw
-        var texture = dynamic.getTextureId();
-        if (texture != -1) SharedVertexBuffer.draw(List.of(texture));
+        var ids = new ArrayList<BufferData>();
+        dynamic.submitTextureIds(ids);
+        SharedVertexBuffer.draw(ids);
     }
 
     @Override

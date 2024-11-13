@@ -9,7 +9,9 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.noxcrew.noxesium.feature.CustomCoreShaders;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
+import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.CoreShaders;
 import org.joml.Matrix4f;
 
 import java.io.Closeable;
@@ -49,7 +51,7 @@ public class SharedVertexBuffer implements Closeable {
     /**
      * Performs buffer rendering for the given buffer texture ids.
      */
-    public static void draw(List<Integer> textureIds) {
+    public static void draw(List<BufferData> textureIds) {
         if (textureIds.isEmpty()) return;
 
         // Create the vertex buffer if it's not already been made
@@ -84,32 +86,55 @@ public class SharedVertexBuffer implements Closeable {
         bind();
 
         // Set up the uniform with the amount of buffers
-        var samplerCount = textureIds.size();
-        var draws = ((samplerCount - 1) / MAX_SAMPLERS) + 1;
+        var index = 0;
         var uniform = Objects.requireNonNull(shader.getUniform("SamplerCount"));
+        for (var texture : textureIds) {
+            if (texture.state() == null) {
+                // Add this texture to the textures
+                RenderSystem.setShaderTexture(index++, texture.textureId());
 
-        for (int pass = 0; pass < draws; pass++) {
-            // Tell the shader how many samplers are valid
-            var count = (pass == draws - 1) ? samplerCount % MAX_SAMPLERS : MAX_SAMPLERS;
-            uniform.set(count);
-
-            // Bind all samplers to either -1 or to the actual texture, we do this
-            // because the samplers don't get cleared and we don't want unnecessary
-            // texture binding to make performance worse.
-            for (var index = 0; index < MAX_SAMPLERS; index++) {
-                if (index >= count) {
-                    RenderSystem.setShaderTexture(index, -1);
-                } else {
-                    RenderSystem.setShaderTexture(index, textureIds.get(MAX_SAMPLERS * pass + index));
+                // If we've reached the maximum amount we run a draw
+                if (index == MAX_SAMPLERS) {
+                    uniform.set(MAX_SAMPLERS);
+                    buffer.drawWithShader(NULL_MATRIX, NULL_MATRIX, shader);
+                    index = 0;
                 }
-            }
+            } else {
+                // End the previous wave of buffers and draw this buffer
+                // on its own with a different blending state
+                if (index > 0) {
+                    for (var id = index; id < MAX_SAMPLERS; id++) {
+                        RenderSystem.setShaderTexture(id, -1);
+                    }
+                    uniform.set(index);
+                    buffer.drawWithShader(NULL_MATRIX, NULL_MATRIX, shader);
+                    index = 0;
+                }
 
-            // We don't use the matrices in the shader so we pass null ones.
+                // Now draw this layer itself
+                texture.state().apply();
+
+                // Change the current shader, bind the texture, and run it
+                shader = Objects.requireNonNull(RenderSystem.setShader(CoreShaders.BLIT_SCREEN), "Regular blit shader not loaded");
+                shader.bindSampler("SamplerIn", texture.textureId());
+                buffer.drawWithShader(NULL_MATRIX, NULL_MATRIX, shader);
+
+                // Set it back to the regular blending function
+                shader = Objects.requireNonNull(RenderSystem.setShader(CustomCoreShaders.BLIT_SCREEN_MULTIPLE), "Blit shader not loaded");
+                RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+            }
+        }
+
+        // Draw any remaining buffers as well
+        if (index > 0) {
+            for (var id = index; id < MAX_SAMPLERS; id++) {
+                RenderSystem.setShaderTexture(id, -1);
+            }
+            uniform.set(index);
             buffer.drawWithShader(NULL_MATRIX, NULL_MATRIX, shader);
         }
 
         VertexBuffer.unbind();
-
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);

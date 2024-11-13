@@ -4,11 +4,13 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
+import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
 import net.minecraft.client.gui.GuiGraphics;
 import org.lwjgl.opengl.GL14;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -83,10 +85,11 @@ public class DynamicElement implements Closeable, BlendStateHook {
     }
 
     /**
-     * Returns the texture id of this element.
+     * Adds the texture ids for this buffer to the given list.
      */
-    public int getTextureId() {
-        return bufferEmpty ? -1 : buffer.getTextureId();
+    public void submitTextureIds(List<BufferData> buffers) {
+        if (bufferEmpty) return;
+        buffers.add(new BufferData(buffer.getTextureId(), null));
     }
 
     /**

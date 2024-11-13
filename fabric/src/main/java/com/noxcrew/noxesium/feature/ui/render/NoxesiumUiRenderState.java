@@ -1,6 +1,7 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
 import com.noxcrew.noxesium.feature.ui.layer.NoxesiumLayeredDraw;
+import com.noxcrew.noxesium.feature.ui.render.api.BufferData;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
@@ -119,7 +120,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
         }
 
         // Draw the groups in order
-        var ids = new ArrayList<Integer>();
+        var ids = new ArrayList<BufferData>();
         for (var group : groups) {
             // If the buffer is broken we have to early exit and draw
             // directly before going back to the buffers!
@@ -131,8 +132,7 @@ public class NoxesiumUiRenderState implements NoxesiumRenderState {
             }
 
             // If the buffer is valid we use it to draw
-            var id = group.dynamic().getTextureId();
-            if (id != -1) ids.add(id);
+            group.dynamic().submitTextureIds(ids);
         }
 
         // Call draw on any remaining ids
