@@ -13,6 +13,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.opengl.GL44;
@@ -126,6 +127,12 @@ public class ElementBuffer implements Closeable {
         SharedVertexBuffer.allowRebindingTarget = true;
         target.bindWrite(true);
         SharedVertexBuffer.allowRebindingTarget = false;
+
+        // Prepare a correct constant blending color
+        GL14.glBlendColor(1f, 1f, 1f, 1f);
+
+        // Pre-enable the blending state
+        DynamicElement.DEFAULT_BLEND_STATE.apply();
 
         // Clear the contents of the render target while keeping it bound
         GlStateManager._clearColor(0, 0, 0, 0);

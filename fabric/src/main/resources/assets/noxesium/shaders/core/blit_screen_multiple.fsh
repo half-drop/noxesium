@@ -15,63 +15,51 @@ in vec2 texCoord;
 out vec4 fragColor;
 
 void main() {
-    if (SamplerCount == 1) {
-        fragColor = texture(Sampler0, texCoord);
-    } else if (SamplerCount == 2) {
-        fragColor = (1.0/2.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord)
-        );
-    } else if (SamplerCount == 3) {
-        fragColor = (1.0/3.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord)
-        );
-    } else if (SamplerCount == 4) {
-        fragColor = (1.0/4.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord) +
-            texture(Sampler3, texCoord)
-        );
-    } else if (SamplerCount == 5) {
-        fragColor = (1.0/5.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord) +
-            texture(Sampler3, texCoord) +
-            texture(Sampler4, texCoord)
-        );
-    } else if (SamplerCount == 6) {
-        fragColor = (1.0/6.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord) +
-            texture(Sampler3, texCoord) +
-            texture(Sampler4, texCoord) +
-            texture(Sampler5, texCoord)
-        );
-    } else if (SamplerCount == 7) {
-        fragColor = (1.0/7.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord) +
-            texture(Sampler3, texCoord) +
-            texture(Sampler4, texCoord) +
-            texture(Sampler5, texCoord) +
-            texture(Sampler6, texCoord)
-        );
-    } else if (SamplerCount == 8) {
-        fragColor = (1.0/8.0) * (
-            texture(Sampler0, texCoord) +
-            texture(Sampler1, texCoord) +
-            texture(Sampler2, texCoord) +
-            texture(Sampler3, texCoord) +
-            texture(Sampler4, texCoord) +
-            texture(Sampler4, texCoord) +
-            texture(Sampler6, texCoord) +
-            texture(Sampler7, texCoord)
-        );
+    vec4 result = texture(Sampler0, texCoord);
+    vec4 sample = result;
+
+    if (SamplerCount >= 2) {
+        sample = texture(Sampler1, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
     }
+    if (SamplerCount >= 3) {
+        sample = texture(Sampler2, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+    if (SamplerCount >= 4) {;
+        sample = texture(Sampler3, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+    if (SamplerCount >= 5) {
+        sample = texture(Sampler4, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+    if (SamplerCount >= 6) {
+        sample = texture(Sampler5, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+    if (SamplerCount >= 7) {
+        sample = texture(Sampler6, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+    if (SamplerCount >= 8) {
+        sample = texture(Sampler7, texCoord);
+        if (sample.a > 0) {
+            result = sample + result * (1 - sample.a);
+        }
+    }
+
+    fragColor = result;
 }

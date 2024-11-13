@@ -17,8 +17,8 @@ public abstract class GlStateManagerMixin {
     @Inject(method = "_enableBlend", at = @At("HEAD"), cancellable = true)
     private static void preventEnableBlend(CallbackInfo ci) {
         var hook = SharedVertexBuffer.blendStateHook;
-        if (hook == null) return;
-        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeState(true)) {
+        if (hook == null || SharedVertexBuffer.ignoreBlendStateHook) return;
+        if (hook.changeState(true)) {
             ci.cancel();
         }
     }
@@ -26,8 +26,8 @@ public abstract class GlStateManagerMixin {
     @Inject(method = "_disableBlend", at = @At("HEAD"), cancellable = true)
     private static void preventDisableBlend(CallbackInfo ci) {
         var hook = SharedVertexBuffer.blendStateHook;
-        if (hook == null) return;
-        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeState(false)) {
+        if (hook == null || SharedVertexBuffer.ignoreBlendStateHook) return;
+        if (hook.changeState(false)) {
             ci.cancel();
         }
     }
@@ -35,8 +35,8 @@ public abstract class GlStateManagerMixin {
     @Inject(method = "_blendFunc", at = @At("HEAD"), cancellable = true)
     private static void preventBlendFunc(int srcRgb, int dstRgb, CallbackInfo ci) {
         var hook = SharedVertexBuffer.blendStateHook;
-        if (hook == null) return;
-        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeFunc(srcRgb, dstRgb, srcRgb, dstRgb)) {
+        if (hook == null || SharedVertexBuffer.ignoreBlendStateHook) return;
+        if (hook.changeFunc(srcRgb, dstRgb, srcRgb, dstRgb)) {
             ci.cancel();
         }
     }
@@ -44,8 +44,8 @@ public abstract class GlStateManagerMixin {
     @Inject(method = "_blendFuncSeparate", at = @At("HEAD"), cancellable = true)
     private static void preventBlendFuncSeparate(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha, CallbackInfo ci) {
         var hook = SharedVertexBuffer.blendStateHook;
-        if (hook == null) return;
-        if (SharedVertexBuffer.ignoreBlendStateHook || hook.changeFunc(srcRgb, dstRgb, srcAlpha, dstAlpha)) {
+        if (hook == null || SharedVertexBuffer.ignoreBlendStateHook) return;
+        if (hook.changeFunc(srcRgb, dstRgb, srcAlpha, dstAlpha)) {
             ci.cancel();
         }
     }

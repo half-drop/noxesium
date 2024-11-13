@@ -1,10 +1,11 @@
 package com.noxcrew.noxesium.feature.ui.render;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.noxcrew.noxesium.NoxesiumMod;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
 import net.minecraft.client.gui.GuiGraphics;
-import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -18,6 +19,9 @@ public class DynamicElement implements Closeable, BlendStateHook {
     // Stores whether any elements were drawn.
     public static boolean elementsWereDrawn = false;
 
+    public static final BlendState DEFAULT_BLEND_STATE = BlendState.standard();
+    public static final BlendState GLINT_BLEND_STATE = BlendState.glint();
+
     private static final Random random = new Random();
     private final ElementBuffer buffer;
     private boolean bufferEmpty = false;
@@ -25,7 +29,6 @@ public class DynamicElement implements Closeable, BlendStateHook {
     private long nextCheck;
     private long nextRender = -1;
     private int failedCheckCount = 0;
-    private BlendState blendState;
 
     /**
      * The current fps at which we check for optimization steps.
@@ -146,10 +149,7 @@ public class DynamicElement implements Closeable, BlendStateHook {
     /**
      * Updates the current state of this element.
      */
-    public boolean update(long nanoTime, GuiGraphics guiGraphics, BlendState blendState, Runnable draw) {
-        // Use the blend state while making edits for this object
-        this.blendState = blendState;
-
+    public boolean update(long nanoTime, GuiGraphics guiGraphics, Runnable draw) {
         // Always start by awaiting the GPU fence
         buffer.awaitFence();
 
@@ -175,10 +175,10 @@ public class DynamicElement implements Closeable, BlendStateHook {
         elementsWereDrawn = false;
         SharedVertexBuffer.blendStateHook = this;
         draw.run();
-        SharedVertexBuffer.blendStateHook = null;
 
         // Actually render things to this buffer
         guiGraphics.flush();
+        SharedVertexBuffer.blendStateHook = null;
 
         // Nothing was drawn, this layer does not contain anything!
         bufferEmpty = !elementsWereDrawn;
@@ -190,69 +190,46 @@ public class DynamicElement implements Closeable, BlendStateHook {
         return true;
     }
 
-    /*
-        Default blending is:
-            RenderSystem.enableBlend();
-            RenderSystem.blendFuncSeparate(
-                GlStateManager.SourceFactor.SRC_ALPHA,
-                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                GlStateManager.SourceFactor.ONE,
-                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
-            );
-
-        In vanilla we expect the following blend state changes:
-            Vignette has VIGNETTE_TRANSPARENCY with:
-                RenderSystem.enableBlend();
-                RenderSystem.blendFunc(GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR);
-
-            Crosshair has CROSSHAIR_TRANSPARENCY with:
-                RenderSystem.enableBlend();
-                RenderSystem.blendFuncSeparate(
-                    GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
-                    GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR,
-                    GlStateManager.SourceFactor.ONE,
-                    GlStateManager.DestFactor.ZERO
-                );
-
-            Nausea overlay has NAUSEA_OVERLAY_TRANSPARENCY with:
-                RenderSystem.enableBlend();
-                RenderSystem.blendFuncSeparate(
-                    GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE
-                );
-
-            Hotbar items use entity cutout which has NO_TRANSPARENCY with:
-                RenderSystem.disableBlend();
-                (default blend func is implied but unnecessary)
-
-            Hotbar item glints uses GLINT_TRANSPERNCY with:
-                RenderSystem.enableBlend();
-                RenderSystem.blendFuncSeparate(
-                    GlStateManager.SourceFactor.SRC_COLOR, GlStateManager.DestFactor.ONE, GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE
-                );
-
-            Likely other overlays used.
-
-            Our default blend function for drawing the buffers is:
-            GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA
-     */
-
     @Override
     public boolean changeState(boolean newValue) {
-        if (newValue == blendState.enabled()) return true;
-        // System.out.println("blend state -> " + newValue);
-        if (!newValue) {
-            // Whenever blending is disabled we trigger a change to the default blend function as well
-            // as vanilla assumes this to be the default when it's given that blending is off
-            changeFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        }
+        // Ignore any enabling of blending as blending is already enabled
+        if (newValue) return false;
+
+        // If blending is turned off at any point we don't need to fork the buffer, we just need to temporarily change how
+        // we approach blending. We want to copy the RGB normally but set the alpha to a static value of 255. For this we
+        // use the constant color system.
+        SharedVertexBuffer.ignoreBlendStateHook = true;
+        GlStateManager._blendFuncSeparate(
+                // Copy normal colors directly
+                GL14.GL_ONE,
+                GL14.GL_ZERO,
+                // Use the constant color's alpha value
+                // for the resulting pixel in the buffer,
+                // since the buffer starts out being entirely
+                // transparent this puts a fully opaque
+                // pixels at any pixel we draw to when not
+                // blending.
+                GL14.GL_CONSTANT_ALPHA,
+                GL14.GL_ZERO
+        );
+        SharedVertexBuffer.ignoreBlendStateHook = false;
+
+        // Don't let the blending disable go through
         return true;
     }
 
     @Override
     public boolean changeFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (srcRgb == blendState.srcRgb() && dstRgb == blendState.dstRgb() && srcAlpha == blendState.srcAlpha() && dstAlpha == blendState.dstAlpha()) return true;
-        // System.out.println("blend func -> " + srcRgb + ", " + dstRgb + ", " + srcAlpha + ", " + dstAlpha);
-        return true;
+        // Ignore any changes that do not actually change from the default blend state, or
+        // if they are specific types of blend states that are permitted.
+        if (DEFAULT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha) ||
+                // We allow glint states as this is one that specifically applies edits to an existing
+                // item that was just rendered in the same buffer.
+                GLINT_BLEND_STATE.matches(srcRgb, dstRgb, srcAlpha, dstAlpha)) return false;
+
+        // TODO Split the buffer!
+        // System.out.println("Layer: " + layer + "Changing to " + srcRgb + ", " + dstRgb + ", " + srcAlpha + ", " + dstAlpha);
+        return false;
     }
 
     @Override

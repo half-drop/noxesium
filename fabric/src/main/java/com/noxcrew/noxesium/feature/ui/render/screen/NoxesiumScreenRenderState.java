@@ -2,7 +2,6 @@ package com.noxcrew.noxesium.feature.ui.render.screen;
 
 import com.noxcrew.noxesium.feature.ui.render.DynamicElement;
 import com.noxcrew.noxesium.feature.ui.render.SharedVertexBuffer;
-import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.NoxesiumRenderState;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -37,8 +36,7 @@ public class NoxesiumScreenRenderState implements NoxesiumRenderState {
         }
 
         // Update the buffer and redraw it if necessary
-        var blendState = BlendState.standard();
-        if (dynamic.update(nanoTime, guiGraphics, blendState, () -> screen.renderWithTooltip(guiGraphics, width, height, deltaTime))) {
+        if (dynamic.update(nanoTime, guiGraphics, () -> screen.renderWithTooltip(guiGraphics, width, height, deltaTime))) {
             SharedVertexBuffer.rebindMainRenderTarget();
         }
 

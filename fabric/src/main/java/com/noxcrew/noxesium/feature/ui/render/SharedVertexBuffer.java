@@ -11,8 +11,6 @@ import com.noxcrew.noxesium.feature.ui.render.api.BlendState;
 import com.noxcrew.noxesium.feature.ui.render.api.BlendStateHook;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL14;
 
 import java.io.Closeable;
 import java.util.List;
@@ -69,7 +67,9 @@ public class SharedVertexBuffer implements Closeable {
         // Cache the current blend state so we can return to it
         var originalBlendState = BlendState.snapshot();
 
-        // Set up the default blending properties
+        // Set up the correct blending properties, this matches
+        // the default way that transparent elements are rendered
+        // https://stackoverflow.com/questions/2171085/opengl-blending-with-previous-contents-of-framebuffer
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
@@ -165,6 +165,10 @@ public class SharedVertexBuffer implements Closeable {
      */
     public static void rebindMainRenderTarget() {
         RenderSystem.assertOnRenderThread();
+
+        // Reset the blending state
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
 
         // Bind the main render target to replace this target,
         // we do not need to unbind this buffer first as it

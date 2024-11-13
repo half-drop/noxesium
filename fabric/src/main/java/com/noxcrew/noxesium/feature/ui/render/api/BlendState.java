@@ -9,9 +9,9 @@ import org.lwjgl.opengl.GL11;
 public class BlendState {
 
     /**
-     * Returns the initial blend state before UI rendering starts in vanilla.
+     * Returns the disabled blending state.
      */
-    public static BlendState initial() {
+    public static BlendState off() {
         var state = new BlendState();
         state.blend = false;
         state.srcRgb = GL11.GL_SRC_ALPHA;
@@ -31,6 +31,19 @@ public class BlendState {
         state.dstRgb = GL11.GL_ONE_MINUS_SRC_ALPHA;
         state.srcAlpha = GL11.GL_ONE;
         state.dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
+        return state;
+    }
+
+    /**
+     * Returns the glint blend state.
+     */
+    public static BlendState glint() {
+        var state = new BlendState();
+        state.blend = true;
+        state.srcRgb = GL11.GL_SRC_COLOR;
+        state.dstRgb = GL11.GL_ONE;
+        state.srcAlpha = GL11.GL_ZERO;
+        state.dstAlpha = GL11.GL_ONE;
         return state;
     }
 
@@ -65,37 +78,9 @@ public class BlendState {
     }
 
     /**
-     * Returns whether blending is enabled.
+     * Returns if the given values match this blend state.
      */
-    public boolean enabled() {
-        return blend;
-    }
-
-    /**
-     * Returns the srcRgb value.
-     */
-    public int srcRgb() {
-        return srcRgb;
-    }
-
-    /**
-     * Returns the dstRgb value.
-     */
-    public int dstRgb() {
-        return dstRgb;
-    }
-
-    /**
-     * Returns the srcAlpha value.
-     */
-    public int srcAlpha() {
-        return srcAlpha;
-    }
-
-    /**
-     * Returns the dstAlpha value.
-     */
-    public int dstAlpha() {
-        return dstAlpha;
+    public boolean matches(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        return srcRgb == this.srcRgb && dstRgb == this.dstRgb && srcAlpha == this.srcAlpha && dstAlpha == this.dstAlpha;
     }
 }
