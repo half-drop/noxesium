@@ -2,6 +2,7 @@ package com.noxcrew.noxesium;
 
 import com.google.common.base.Preconditions;
 import com.mojang.blaze3d.shaders.CompiledShader;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.noxcrew.noxesium.api.protocol.ClientSettings;
 import com.noxcrew.noxesium.api.protocol.ProtocolVersion;
 import com.noxcrew.noxesium.config.NoxesiumConfig;
@@ -190,7 +191,7 @@ public class NoxesiumMod implements ClientModInitializer {
 
         // Clear out all UI rendering state when we start configuring
         ClientConfigurationConnectionEvents.START.register((ignored1, ignored2) -> {
-            NoxesiumMod.forEachRenderStateHolder(NoxesiumRenderStateHolder::clear);
+            RenderSystem.recordRenderCall(() -> NoxesiumMod.forEachRenderStateHolder(NoxesiumRenderStateHolder::clear));
         });
 
         // Call disconnection hooks
