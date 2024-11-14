@@ -213,6 +213,11 @@ public class DynamicElement implements Closeable, BlendStateHook {
         guiGraphics.flush();
         SharedVertexBuffer.blendStateHook = null;
 
+        // Remove any remaining buffers
+        for (var index = (bufferIndex + 1); index < buffers.size(); index++) {
+            buffers.remove(index).close();
+        }
+
         // Nothing was drawn, this layer does not contain anything!
         bufferEmpty = !elementsWereDrawn && allBuffersEmpty;
 

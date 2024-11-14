@@ -36,7 +36,7 @@ public class NoxesiumConfig {
     public double mapUiSize = 0.8;
     public MapLocation mapUiLocation = MapLocation.TOP;
     public int minUiFramerate = 30;
-    public int maxUiFramerate = 120;
+    public int maxUiFramerate = 60;
     public boolean showOptimizationOverlay = false;
 
     /**

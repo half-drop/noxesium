@@ -188,6 +188,11 @@ public class NoxesiumMod implements ClientModInitializer {
             initialize();
         });
 
+        // Clear out all UI rendering state when we start configuring
+        ClientConfigurationConnectionEvents.START.register((ignored1, ignored2) -> {
+            NoxesiumMod.forEachRenderStateHolder(NoxesiumRenderStateHolder::clear);
+        });
+
         // Call disconnection hooks
         ClientPlayConnectionEvents.DISCONNECT.register((ignored1, ignored2) -> {
             uninitialize();
