@@ -83,7 +83,7 @@ public class MapUiWrapper extends ElementWrapper {
         var bottom = setting.isBottom();
         var flipped = setting.isFlipped();
 
-        if ((arm == HumanoidArm.RIGHT) != flipped) {
+        if ((arm == HumanoidArm.RIGHT) == flipped) {
             if (bottom) {
                 // Translate it to be at the bottom right of the GUI
                 pose.translate(graphics.guiWidth() - (148f * scale), graphics.guiHeight() - (148f * scale), 0f);
